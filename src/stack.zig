@@ -52,8 +52,8 @@ pub fn Stack(comptime T: type) type {
         }
 
         pub fn pop(self: *Self) void {
-            const del_node = self.head;
-            defer self.allocator.destroy(del_node.?);
+            const node = self.head;
+            defer self.allocator.destroy(node.?);
 
             self.head = self.head.?.prev;
             self.size -= 1;
