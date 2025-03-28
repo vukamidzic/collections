@@ -6,7 +6,7 @@ const expectError = std.testing.expectError;
 pub fn Set(comptime T: type) type {
     return struct {
         const Self = @This();
-        pub const SetNode = struct {
+        const SetNode = struct {
             value: T,
             left: ?*SetNode,
             right: ?*SetNode,
