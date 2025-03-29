@@ -6,6 +6,7 @@ const expectError = std.testing.expectError;
 pub fn Set(comptime T: type) type {
     return struct {
         const Self = @This();
+        //TODO: add element count field
         const SetNode = struct {
             value: T,
             left: ?*SetNode,
@@ -57,7 +58,7 @@ pub fn Set(comptime T: type) type {
 
             if (l > r) return null;
 
-            const m = @divFloor((l + r), 2);
+            const m = @divFloor(l + r, 2);
             node = nodes[@intCast(m)];
             node.?.left = reorder(nodes, l, m - 1);
             node.?.right = reorder(nodes, m + 1, r);
@@ -76,6 +77,7 @@ pub fn Set(comptime T: type) type {
             self.root = reorder(nodes.items, 0, @intCast(self.size - 1));
         }
 
+        //TODO: rewrite function to accomodate for the new SetNode implementation
         fn insert_node(root: ?*SetNode, value: T, allocator: std.mem.Allocator) !?*SetNode {
             if (root == null) {
                 const node = try SetNode.init(allocator);
@@ -102,7 +104,58 @@ pub fn Set(comptime T: type) type {
             try self.balance();
         }
 
-        // TODO: implement Set.delete()
+        fn get_successor(root: ?*SetNode) ?*SetNode {
+            var curr = root;
+            while (curr != null and curr.?.left != null) {
+                curr = curr.?.left;
+            }
+            return curr;
+        }
+
+        fn delete_node(root: ?*SetNode, value: T, allocator: std.mem.Allocator, deleted: *bool) ?*SetNode {
+            if (root) |node| {
+                if (value > node.value) {
+                    node.right = delete_node(node.right, value, allocator, deleted);
+                } else if (value < node.value) {
+                    node.left = delete_node(node.left, value, allocator, deleted);
+                } else {
+                    if (node.left == null) {
+                        deleted.* = true;
+                        const right_child = node.right;
+                        allocator.destroy(node);
+                        return right_child;
+                    }
+
+                    if (node.right == null) {
+                        deleted.* = true;
+                        const left_child = node.left;
+                        allocator.destroy(node);
+                        return left_child;
+                    }
+
+                    const succ = get_successor(node.right);
+                    node.value = succ.?.value;
+                    node.right = delete_node(node.right, succ.?.value, allocator, deleted);
+                }
+
+                return node;
+            }
+
+            return null;
+        }
+
+        pub fn delete(self: *Self, value: T) !void {
+            var deleted = false;
+            self.root = delete_node(self.root, value, self.allocator, &deleted);
+            //TODO: Fix the index overflow in reorder()
+            try self.balance();
+
+            if (deleted) {
+                self.size -= 1;
+            }
+        }
+
+        //TODO: implement contains()
     };
 }
 
@@ -129,3 +182,26 @@ test "Set.insert()" {
     try set.insert(20);
     try expectEqual(4, set.size);
 }
+
+// test "Set.delete()" {
+//     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+//     defer _ = gpa.deinit();
+//     const allocator = gpa.allocator();
+
+//     var set = Set(i32).init(allocator);
+//     defer set.deinit();
+
+//     try set.insert(91);
+//     try set.insert(99);
+//     try set.insert(30);
+//     try set.insert(72);
+//     try set.insert(40);
+//     try set.insert(80);
+//     try expectEqual(6, set.size);
+
+//     try set.delete(10);
+//     try expectEqual(6, set.size);
+
+//     try set.delete(91);
+//     try expectEqual(5, set.size);
+// }
