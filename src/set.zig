@@ -5,7 +5,6 @@ const expectEqual = std.testing.expectEqual;
 pub fn Set(comptime T: type) type {
     return struct {
         const Self = @This();
-        //TODO: add element count field
         const SetNode = struct {
             value: T,
             left: ?*SetNode,
@@ -76,7 +75,6 @@ pub fn Set(comptime T: type) type {
             self.root = reorder(nodes.items, 0, @intCast(self.size - 1));
         }
 
-        //TODO: rewrite function to accomodate for the new SetNode implementation
         fn insert_node(root: ?*SetNode, value: T, allocator: std.mem.Allocator) !?*SetNode {
             if (root == null) {
                 const node = try SetNode.init(allocator);
