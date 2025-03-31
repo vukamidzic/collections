@@ -1,5 +1,4 @@
 const std = @import("std");
-const Queue = @import("queue.zig").Queue;
 const ArrayList = std.ArrayList;
 const expectEqual = std.testing.expectEqual;
 
