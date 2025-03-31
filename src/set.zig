@@ -1,7 +1,7 @@
 const std = @import("std");
+const Queue = @import("queue.zig").Queue;
 const ArrayList = std.ArrayList;
 const expectEqual = std.testing.expectEqual;
-const expectError = std.testing.expectError;
 
 pub fn Set(comptime T: type) type {
     return struct {
@@ -105,7 +105,7 @@ pub fn Set(comptime T: type) type {
         }
 
         fn get_successor(root: ?*SetNode) ?*SetNode {
-            var curr = root;
+            var curr = root.?.right;
             while (curr != null and curr.?.left != null) {
                 curr = curr.?.left;
             }
@@ -133,7 +133,7 @@ pub fn Set(comptime T: type) type {
                         return left_child;
                     }
 
-                    const succ = get_successor(node.right);
+                    const succ = get_successor(node);
                     node.value = succ.?.value;
                     node.right = delete_node(node.right, succ.?.value, allocator, deleted);
                 }
@@ -141,21 +141,33 @@ pub fn Set(comptime T: type) type {
                 return node;
             }
 
-            return null;
+            return root;
         }
 
         pub fn delete(self: *Self, value: T) !void {
             var deleted = false;
             self.root = delete_node(self.root, value, self.allocator, &deleted);
-            //TODO: Fix the index overflow in reorder()
-            try self.balance();
 
             if (deleted) {
                 self.size -= 1;
+                try self.balance();
             }
         }
 
-        //TODO: implement contains()
+        fn find_node(root: ?*SetNode, value: T) bool {
+            if (root == null) return false;
+            if (value == root.?.value) return true;
+
+            if (value > root.?.value) {
+                return find_node(root.?.right, value);
+            } else {
+                return find_node(root.?.left, value);
+            }
+        }
+
+        pub fn contains(self: *Self, value: T) bool {
+            return find_node(self.root, value);
+        }
     };
 }
 
@@ -176,32 +188,66 @@ test "Set.insert()" {
     var set = Set(i32).init(allocator);
     defer set.deinit();
 
-    try set.insert(10);
-    try set.insert(5);
-    try set.insert(6);
-    try set.insert(20);
-    try expectEqual(4, set.size);
+    try set.insert(91);
+    try set.insert(99);
+    try set.insert(30);
+    try set.insert(72);
+    try set.insert(40);
+    try set.insert(80);
+    try expectEqual(6, set.size);
 }
 
-// test "Set.delete()" {
-//     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-//     defer _ = gpa.deinit();
-//     const allocator = gpa.allocator();
+test "Set.delete()" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
 
-//     var set = Set(i32).init(allocator);
-//     defer set.deinit();
+    var set = Set(i32).init(allocator);
+    defer set.deinit();
 
-//     try set.insert(91);
-//     try set.insert(99);
-//     try set.insert(30);
-//     try set.insert(72);
-//     try set.insert(40);
-//     try set.insert(80);
-//     try expectEqual(6, set.size);
+    try set.insert(91);
+    try set.insert(99);
+    try set.insert(30);
+    try set.insert(72);
+    try set.insert(40);
+    try set.insert(80);
+    try expectEqual(6, set.size);
 
-//     try set.delete(10);
-//     try expectEqual(6, set.size);
+    try set.delete(10);
+    try expectEqual(6, set.size);
 
-//     try set.delete(91);
-//     try expectEqual(5, set.size);
-// }
+    try set.delete(91);
+    try expectEqual(5, set.size);
+}
+
+test "Set.contains()" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var set = Set(i32).init(allocator);
+    defer set.deinit();
+
+    try set.insert(35);
+    try set.insert(20);
+    try set.insert(10);
+    try set.insert(15);
+    try set.insert(50);
+    try set.insert(40);
+    try set.insert(70);
+    try expectEqual(7, set.size);
+
+    try expectEqual(true, set.contains(35));
+    try expectEqual(true, set.contains(40));
+    try expectEqual(false, set.contains(23));
+    try expectEqual(false, set.contains(80));
+
+    try set.delete(15);
+    try set.delete(50);
+    try expectEqual(5, set.size);
+
+    try expectEqual(true, set.contains(40));
+    try expectEqual(true, set.contains(20));
+    try expectEqual(false, set.contains(50));
+    try expectEqual(false, set.contains(15));
+}
