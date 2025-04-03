@@ -39,6 +39,10 @@ pub fn Set(comptime T: type) type {
             deinit_nodes(self.root, self.allocator);
         }
 
+        pub fn empty(self: *Self) bool {
+            return self.size == 0;
+        }
+
         fn inorder(root: ?*SetNode, nodes: *ArrayList(?*SetNode)) void {
             if (root) |node| {
                 if (node.left != null) inorder(node.left, nodes);
@@ -72,7 +76,9 @@ pub fn Set(comptime T: type) type {
             errdefer |err| std.log.err("{s}\n", .{@errorName(err)});
 
             self.get_nodes(&nodes);
-            self.root = reorder(nodes.items, 0, @intCast(self.size - 1));
+            if (self.size > 1) {
+                self.root = reorder(nodes.items, 0, @intCast(self.size - 1));
+            }
         }
 
         fn insert_node(root: ?*SetNode, value: T, allocator: std.mem.Allocator) !?*SetNode {
@@ -247,4 +253,26 @@ test "Set.contains()" {
     try expectEqual(true, set.contains(20));
     try expectEqual(false, set.contains(50));
     try expectEqual(false, set.contains(15));
+}
+
+test "Set.empty()" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var set = Set(i32).init(allocator);
+    defer set.deinit();
+    try set.insert(10);
+    try set.insert(5);
+    try set.insert(8);
+    try set.insert(20);
+    try expectEqual(false, set.empty());
+
+    try set.delete(10);
+    try set.delete(20);
+    try expectEqual(false, set.empty());
+
+    try set.delete(5);
+    try set.delete(8);
+    try expectEqual(true, set.empty());
 }
