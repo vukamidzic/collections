@@ -265,7 +265,7 @@ test "Set.empty()" {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var set = Set(i32).init(allocator);
+    var set = Set(i32, cmp.default_cmp).init(allocator);
     defer set.deinit();
     try set.insert(10);
     try set.insert(5);
