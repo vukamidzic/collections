@@ -163,9 +163,10 @@ pub fn Set(comptime T: type, comptime cmp_fn: fn (anytype, anytype) cmp.CmpErr!c
 
         fn find_node(root: ?*SetNode, value: T) !bool {
             if (root == null) return false;
-            if (value == root.?.value) return true;
 
             const cmp_res = cmp_fn(value, root.?.value) catch |err| return err;
+            if (cmp_res == cmp.CmpResult.EQ) return true;
+
             if (cmp_res == cmp.CmpResult.GT) {
                 return find_node(root.?.right, value);
             } else {
