@@ -2,8 +2,8 @@ const std = @import("std");
 const expectEqual = std.testing.expectEqual;
 const expectError = std.testing.expectError;
 
-const CmpResult = enum { LT, GT, EQ };
-const CmpErr = error{ NotEqualTypes, NotEqualSizes, NotEqualFieldNames };
+pub const CmpResult = enum { LT, GT, EQ };
+pub const CmpErr = error{NotEqualTypes};
 
 pub fn default_cmp(obj1: anytype, obj2: anytype) CmpErr!CmpResult {
     const T = @TypeOf(obj1);
@@ -14,6 +14,7 @@ pub fn default_cmp(obj1: anytype, obj2: anytype) CmpErr!CmpResult {
     const T_info = @typeInfo(T);
     const U_info = @typeInfo(U);
 
+    // comparing primitive types
     if (T_info != .Struct and U_info != .Struct) {
         if (obj1 < obj2) {
             return CmpResult.LT;
@@ -23,21 +24,15 @@ pub fn default_cmp(obj1: anytype, obj2: anytype) CmpErr!CmpResult {
             return CmpResult.EQ;
         }
     } else {
-        const T_fields_count = T_info.Struct.fields.len;
-        const U_fields_count = U_info.Struct.fields.len;
-        if (T_fields_count != U_fields_count) return CmpErr.NotEqualSizes;
+        const fields_count = T_info.Struct.fields.len;
 
-        inline for (0..T_fields_count) |idx| {
-            const T_field_name = T_info.Struct.fields[idx].name;
-            const U_field_name = U_info.Struct.fields[idx].name;
-            if (!std.mem.eql(u8, T_field_name, U_field_name)) return CmpErr.NotEqualFieldNames;
+        inline for (0..fields_count) |idx| {
+            const field_name = T_info.Struct.fields[idx].name;
 
-            const v1 = @field(obj1, T_field_name);
-            const v2 = @field(obj2, U_field_name);
+            const v1 = @field(obj1, field_name);
+            const v2 = @field(obj2, field_name);
 
-            const rec_res = default_cmp(v1, v2) catch |err| {
-                return err;
-            };
+            const rec_res = default_cmp(v1, v2) catch |err| return err;
             if (rec_res != CmpResult.EQ) return rec_res;
         }
     }
@@ -45,7 +40,7 @@ pub fn default_cmp(obj1: anytype, obj2: anytype) CmpErr!CmpResult {
     return CmpResult.EQ;
 }
 
-test "default_cmp()_primitives" {
+test "default_cmp() with primitives" {
     var a: i32 = 10;
     var b: i32 = 10;
     try expectEqual(CmpResult.EQ, default_cmp(a, b));
@@ -63,17 +58,18 @@ test "default_cmp()_primitives" {
     try expectEqual(CmpResult.LT, default_cmp(a, @as(i32, c)));
 }
 
-test "default_cmp()_structs" {
-    const Vec2 = struct { x: f64, y: f64 };
-    var a = Vec2{ .x = 10.0, .y = 10.0 };
-    var b = Vec2{ .x = 10.0, .y = 15.0 };
+test "default_cmp() with structs" {
+    const A = struct { field1: i32, field2: f64 };
+    const B = struct { field1: i32, field2: f64 };
 
-    try expectEqual(CmpResult.LT, default_cmp(a, b));
+    const a = A{ .field1 = 10, .field2 = 10.0 };
+    const b = B{ .field1 = 10, .field2 = -10.0 };
 
-    a = Vec2{ .x = 20.0, .y = 10.0 };
-    b = Vec2{ .x = 15.0, .y = 10.0 };
+    try expectError(CmpErr.NotEqualTypes, default_cmp(a, b));
 
-    try expectEqual(CmpResult.GT, default_cmp(a, b));
+    const c = A{ .field1 = 5, .field2 = 15.0 };
+    try expectEqual(CmpResult.GT, default_cmp(a, c));
+
+    const d = B{ .field1 = 10, .field2 = -5.0 };
+    try expectEqual(CmpResult.LT, default_cmp(b, d));
 }
-
-//TODO: write more tests regarding the comparison between structs

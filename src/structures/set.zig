@@ -1,8 +1,9 @@
 const std = @import("std");
+const cmp = @import("../cmp.zig");
 const ArrayList = std.ArrayList;
 const expectEqual = std.testing.expectEqual;
 
-pub fn Set(comptime T: type) type {
+pub fn Set(comptime T: type, comptime cmp_fn: fn (anytype, anytype) cmp.CmpErr!cmp.CmpResult) type {
     return struct {
         const Self = @This();
         const SetNode = struct {
@@ -86,7 +87,8 @@ pub fn Set(comptime T: type) type {
                 return node;
             }
 
-            if (value < root.?.value) {
+            const cmp_res = cmp_fn(value, root.?.value) catch |err| return err;
+            if (cmp_res == cmp.CmpResult.LT) {
                 root.?.left = try insert_node(root.?.left, value, allocator);
             } else {
                 root.?.right = try insert_node(root.?.right, value, allocator);
@@ -109,12 +111,14 @@ pub fn Set(comptime T: type) type {
             return curr;
         }
 
-        fn delete_node(root: ?*SetNode, value: T, allocator: std.mem.Allocator, deleted: *bool) ?*SetNode {
+        fn delete_node(root: ?*SetNode, value: T, allocator: std.mem.Allocator, deleted: *bool) !?*SetNode {
             if (root) |node| {
-                if (value > node.value) {
-                    node.right = delete_node(node.right, value, allocator, deleted);
-                } else if (value < node.value) {
-                    node.left = delete_node(node.left, value, allocator, deleted);
+                const cmp_res = cmp_fn(value, node.value) catch |err| return err;
+
+                if (cmp_res == cmp.CmpResult.GT) {
+                    node.right = try delete_node(node.right, value, allocator, deleted);
+                } else if (cmp_res == cmp.CmpResult.LT) {
+                    node.left = try delete_node(node.left, value, allocator, deleted);
                 } else {
                     if (node.left == null) {
                         deleted.* = true;
@@ -132,7 +136,7 @@ pub fn Set(comptime T: type) type {
 
                     const succ = get_successor(node);
                     node.value = succ.?.value;
-                    node.right = delete_node(node.right, succ.?.value, allocator, deleted);
+                    node.right = try delete_node(node.right, succ.?.value, allocator, deleted);
                 }
 
                 return node;
@@ -143,7 +147,7 @@ pub fn Set(comptime T: type) type {
 
         pub fn delete(self: *Self, value: T) !void {
             var deleted = false;
-            self.root = delete_node(self.root, value, self.allocator, &deleted);
+            self.root = try delete_node(self.root, value, self.allocator, &deleted);
 
             if (deleted) {
                 self.size -= 1;
@@ -151,19 +155,20 @@ pub fn Set(comptime T: type) type {
             }
         }
 
-        fn find_node(root: ?*SetNode, value: T) bool {
+        fn find_node(root: ?*SetNode, value: T) !bool {
             if (root == null) return false;
             if (value == root.?.value) return true;
 
-            if (value > root.?.value) {
+            const cmp_res = cmp_fn(value, root.?.value) catch |err| return err;
+            if (cmp_res == cmp.CmpResult.GT) {
                 return find_node(root.?.right, value);
             } else {
                 return find_node(root.?.left, value);
             }
         }
 
-        pub fn contains(self: *Self, value: T) bool {
-            return find_node(self.root, value);
+        pub fn contains(self: *Self, value: T) !bool {
+            return try find_node(self.root, value);
         }
     };
 }
@@ -173,7 +178,7 @@ test "Set.init()" {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const set = Set(i32).init(allocator);
+    const set = Set(i32, cmp.default_cmp).init(allocator);
     try expectEqual(0, set.size);
 }
 
@@ -182,7 +187,7 @@ test "Set.insert()" {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var set = Set(i32).init(allocator);
+    var set = Set(i32, cmp.default_cmp).init(allocator);
     defer set.deinit();
 
     try set.insert(91);
@@ -199,7 +204,7 @@ test "Set.delete()" {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var set = Set(i32).init(allocator);
+    var set = Set(i32, cmp.default_cmp).init(allocator);
     defer set.deinit();
 
     try set.insert(91);
@@ -222,7 +227,7 @@ test "Set.contains()" {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var set = Set(i32).init(allocator);
+    var set = Set(i32, cmp.default_cmp).init(allocator);
     defer set.deinit();
 
     try set.insert(35);
