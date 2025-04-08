@@ -1,4 +1,5 @@
 const std = @import("std");
+const src = @import("src");
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
@@ -11,7 +12,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const tests = b.addTest(.{
-        .root_source_file = b.path("tests.zig"),
+        .root_source_file = b.path("./src/tests.zig"),
         .test_runner = b.path("./test_runner.zig"),
         .target = target,
         .optimize = optimize,
