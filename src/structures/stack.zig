@@ -1,5 +1,6 @@
 const std = @import("std");
 const expectEqual = std.testing.expectEqual;
+const test_allocator = std.testing.allocator;
 
 pub fn Stack(comptime T: type) type {
     return struct {
@@ -58,24 +59,29 @@ pub fn Stack(comptime T: type) type {
             self.head = self.head.?.prev;
             self.size -= 1;
         }
+
+        pub fn format(self: Self, comptime fmt: []const u8, opts: std.fmt.FormatOptions, writer: anytype) !void {
+            _ = fmt;
+            _ = opts;
+
+            try writer.writeAll("[ ");
+            var curr = self.head;
+            while (curr) |node| {
+                try writer.print("{} ", .{node.value});
+                curr = node.prev;
+            }
+            try writer.writeAll("]");
+        }
     };
 }
 
 test "Stack.init()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    const stack = Stack(i32).init(allocator);
+    const stack = Stack(i32).init(test_allocator);
     try expectEqual(0, stack.size);
 }
 
 test "Stack.deinit()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var stack = Stack(i32).init(allocator);
+    var stack = Stack(i32).init(test_allocator);
     try expectEqual(0, stack.size);
 
     stack.deinit();
@@ -83,11 +89,7 @@ test "Stack.deinit()" {
 }
 
 test "Stack.push()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var stack = Stack(i32).init(allocator);
+    var stack = Stack(i32).init(test_allocator);
     defer stack.deinit();
     try stack.push(1);
     try stack.push(2);
@@ -96,11 +98,7 @@ test "Stack.push()" {
 }
 
 test "Stack.top()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var stack = Stack(i32).init(allocator);
+    var stack = Stack(i32).init(test_allocator);
     defer stack.deinit();
     try stack.push(1);
     try stack.push(2);
@@ -111,11 +109,7 @@ test "Stack.top()" {
 }
 
 test "Stack.pop()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var stack = Stack(i32).init(allocator);
+    var stack = Stack(i32).init(test_allocator);
     defer stack.deinit();
     try stack.push(1);
     try stack.push(2);
@@ -132,11 +126,7 @@ test "Stack.pop()" {
 }
 
 test "Stack.empty()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var stack = Stack(i32).init(allocator);
+    var stack = Stack(i32).init(test_allocator);
     defer stack.deinit();
     try stack.push(1);
     try stack.push(2);
@@ -146,4 +136,34 @@ test "Stack.empty()" {
     stack.pop();
     stack.pop();
     try expectEqual(true, stack.empty());
+}
+
+test "Stack.format()" {
+    var stack = Stack(i32).init(test_allocator);
+    defer stack.deinit();
+    try stack.push(1);
+    try stack.push(2);
+    try stack.push(3);
+    try stack.push(4);
+    try stack.push(5);
+
+    var stack_string = try std.fmt.allocPrint(
+        test_allocator,
+        "{s}",
+        .{stack},
+    );
+    try expectEqual(true, std.mem.eql(u8, stack_string, "[ 5 4 3 2 1 ]"));
+    test_allocator.free(stack_string);
+
+    inline for (0..5) |_| {
+        stack.pop();
+    }
+
+    stack_string = try std.fmt.allocPrint(
+        test_allocator,
+        "{s}",
+        .{stack},
+    );
+    try expectEqual(true, std.mem.eql(u8, stack_string, "[ ]"));
+    test_allocator.free(stack_string);
 }

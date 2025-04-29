@@ -2,6 +2,7 @@ const std = @import("std");
 const cmp = @import("../cmp.zig");
 const ArrayList = std.ArrayList;
 const expectEqual = std.testing.expectEqual;
+const test_allocator = std.testing.allocator;
 
 pub fn Set(comptime T: type, comptime cmp_fn: fn (anytype, anytype) cmp.CmpErr!cmp.CmpResult) type {
     return struct {
@@ -177,24 +178,32 @@ pub fn Set(comptime T: type, comptime cmp_fn: fn (anytype, anytype) cmp.CmpErr!c
         pub fn contains(self: *Self, value: T) !bool {
             return try find_node(self.root, value);
         }
+
+        pub fn format(self: Self, comptime fmt: []const u8, opts: std.fmt.FormatOptions, writer: anytype) !void {
+            _ = fmt;
+            _ = opts;
+
+            var nodes = ArrayList(?*SetNode).init(self.allocator);
+            try nodes.ensureTotalCapacity(self.size);
+            defer nodes.deinit();
+
+            @constCast(&self).get_nodes(&nodes);
+            try writer.writeAll("[ ");
+            for (nodes.items) |node| {
+                try writer.print("{} ", .{node.?.value});
+            }
+            try writer.writeAll("]");
+        }
     };
 }
 
 test "Set.init()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    const set = Set(i32, cmp.default_cmp).init(allocator);
+    const set = Set(i32, cmp.default_cmp).init(test_allocator);
     try expectEqual(0, set.size);
 }
 
 test "Set.insert()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var set = Set(i32, cmp.default_cmp).init(allocator);
+    var set = Set(i32, cmp.default_cmp).init(test_allocator);
     defer set.deinit();
 
     try set.insert(91);
@@ -207,11 +216,7 @@ test "Set.insert()" {
 }
 
 test "Set.delete()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var set = Set(i32, cmp.default_cmp).init(allocator);
+    var set = Set(i32, cmp.default_cmp).init(test_allocator);
     defer set.deinit();
 
     try set.insert(91);
@@ -230,11 +235,7 @@ test "Set.delete()" {
 }
 
 test "Set.contains()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var set = Set(i32, cmp.default_cmp).init(allocator);
+    var set = Set(i32, cmp.default_cmp).init(test_allocator);
     defer set.deinit();
 
     try set.insert(35);
@@ -262,11 +263,7 @@ test "Set.contains()" {
 }
 
 test "Set.empty()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var set = Set(i32, cmp.default_cmp).init(allocator);
+    var set = Set(i32, cmp.default_cmp).init(test_allocator);
     defer set.deinit();
     try set.insert(10);
     try set.insert(5);
@@ -281,4 +278,38 @@ test "Set.empty()" {
     try set.delete(5);
     try set.delete(8);
     try expectEqual(true, set.empty());
+}
+
+test "Set.format()" {
+    var set = Set(i32, cmp.default_cmp).init(test_allocator);
+    defer set.deinit();
+    try set.insert(10);
+    try set.insert(5);
+    try set.insert(6);
+    try set.insert(15);
+    try set.insert(13);
+    try set.insert(20);
+
+    var set_string = try std.fmt.allocPrint(
+        test_allocator,
+        "{s}",
+        .{set},
+    );
+    try expectEqual(true, std.mem.eql(u8, set_string, "[ 5 6 10 13 15 20 ]"));
+    test_allocator.free(set_string);
+
+    try set.delete(10);
+    try set.delete(5);
+    try set.delete(6);
+    try set.delete(15);
+    try set.delete(13);
+    try set.delete(20);
+
+    set_string = try std.fmt.allocPrint(
+        test_allocator,
+        "{s}",
+        .{set},
+    );
+    try expectEqual(true, std.mem.eql(u8, set_string, "[ ]"));
+    test_allocator.free(set_string);
 }

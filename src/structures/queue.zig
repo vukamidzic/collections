@@ -1,5 +1,6 @@
 const std = @import("std");
 const expectEqual = std.testing.expectEqual;
+const test_allocator = std.testing.allocator;
 
 pub fn Queue(comptime T: type) type {
     return struct {
@@ -75,25 +76,30 @@ pub fn Queue(comptime T: type) type {
             self.front = self.front.?.prev;
             self.size -= 1;
         }
+
+        pub fn format(self: Self, comptime fmt: []const u8, opts: std.fmt.FormatOptions, writer: anytype) !void {
+            _ = fmt;
+            _ = opts;
+
+            try writer.writeAll("[ ");
+            var curr = self.front;
+            while (curr) |node| {
+                try writer.print("{} ", .{node.value});
+                curr = node.prev;
+            }
+            try writer.writeAll("]");
+        }
     };
 }
 
 test "Queue.init()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var queue = Queue(i32).init(allocator);
+    var queue = Queue(i32).init(test_allocator);
     defer queue.deinit();
     try expectEqual(0, queue.size);
 }
 
 test "Queue.push()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var queue = Queue(i32).init(allocator);
+    var queue = Queue(i32).init(test_allocator);
     defer queue.deinit();
     try queue.push(10);
     try queue.push(20);
@@ -102,11 +108,7 @@ test "Queue.push()" {
 }
 
 test "Queue.pop()" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var queue = Queue(i32).init(allocator);
+    var queue = Queue(i32).init(test_allocator);
     defer queue.deinit();
     try queue.push(10);
     try queue.push(20);
@@ -119,11 +121,7 @@ test "Queue.pop()" {
 }
 
 test "Queue.{first()+last()+empty()}" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var queue = Queue(i32).init(allocator);
+    var queue = Queue(i32).init(test_allocator);
     defer queue.deinit();
     try queue.push(10);
     try queue.push(20);
@@ -142,4 +140,34 @@ test "Queue.{first()+last()+empty()}" {
     queue.pop();
     queue.pop();
     try expectEqual(true, queue.empty());
+}
+
+test "Queue.format()" {
+    var queue = Queue(i32).init(test_allocator);
+    defer queue.deinit();
+    try queue.push(10);
+    try queue.push(20);
+    try queue.push(30);
+    try queue.push(40);
+    try queue.push(50);
+
+    var queue_string = try std.fmt.allocPrint(
+        test_allocator,
+        "{s}",
+        .{queue},
+    );
+    try expectEqual(true, std.mem.eql(u8, queue_string, "[ 10 20 30 40 50 ]"));
+    test_allocator.free(queue_string);
+
+    inline for (0..5) |_| {
+        queue.pop();
+    }
+
+    queue_string = try std.fmt.allocPrint(
+        test_allocator,
+        "{s}",
+        .{queue},
+    );
+    try expectEqual(true, std.mem.eql(u8, queue_string, "[ ]"));
+    test_allocator.free(queue_string);
 }
