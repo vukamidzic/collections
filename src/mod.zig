@@ -7,5 +7,4 @@ pub const structures = struct {
 pub const cmp = struct {
     pub const CmpResult = @import("cmp.zig").CmpResult;
     pub const CmpErr = @import("cmp.zig").CmpErr;
-    pub const default_cmp = @import("cmp.zig").default_cmp;
 };

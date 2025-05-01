@@ -4,7 +4,7 @@ const ArrayList = std.ArrayList;
 const expectEqual = std.testing.expectEqual;
 const test_allocator = std.testing.allocator;
 
-pub fn Set(comptime T: type, comptime cmp_fn: fn (anytype, anytype) cmp.CmpErr!cmp.CmpResult) type {
+pub fn Set(comptime T: type, comptime cmp_fn: ?fn (anytype, anytype) cmp.CmpErr!cmp.CmpResult) type {
     return struct {
         const Self = @This();
         const SetNode = struct {
@@ -94,7 +94,7 @@ pub fn Set(comptime T: type, comptime cmp_fn: fn (anytype, anytype) cmp.CmpErr!c
                 return node;
             }
 
-            const cmp_res = cmp_fn(value, root.?.value) catch |err| return err;
+            const cmp_res = (cmp_fn orelse cmp.default_cmp)(value, root.?.value) catch |err| return err;
             if (cmp_res == cmp.CmpResult.LT) {
                 root.?.left = try insert_node(root.?.left, value, allocator);
             } else {
@@ -120,7 +120,7 @@ pub fn Set(comptime T: type, comptime cmp_fn: fn (anytype, anytype) cmp.CmpErr!c
 
         fn delete_node(root: ?*SetNode, value: T, allocator: std.mem.Allocator, deleted: *bool) !?*SetNode {
             if (root) |node| {
-                const cmp_res = cmp_fn(value, node.value) catch |err| return err;
+                const cmp_res = (cmp_fn orelse cmp.default_cmp)(value, node.value) catch |err| return err;
 
                 if (cmp_res == cmp.CmpResult.GT) {
                     node.right = try delete_node(node.right, value, allocator, deleted);
@@ -165,7 +165,7 @@ pub fn Set(comptime T: type, comptime cmp_fn: fn (anytype, anytype) cmp.CmpErr!c
         fn find_node(root: ?*SetNode, value: T) !bool {
             if (root == null) return false;
 
-            const cmp_res = cmp_fn(value, root.?.value) catch |err| return err;
+            const cmp_res = (cmp_fn orelse cmp.default_cmp)(value, root.?.value) catch |err| return err;
             if (cmp_res == cmp.CmpResult.EQ) return true;
 
             if (cmp_res == cmp.CmpResult.GT) {
@@ -198,12 +198,12 @@ pub fn Set(comptime T: type, comptime cmp_fn: fn (anytype, anytype) cmp.CmpErr!c
 }
 
 test "Set.init()" {
-    const set = Set(i32, cmp.default_cmp).init(test_allocator);
+    const set = Set(i32, null).init(test_allocator);
     try expectEqual(0, set.size);
 }
 
 test "Set.insert()" {
-    var set = Set(i32, cmp.default_cmp).init(test_allocator);
+    var set = Set(i32, null).init(test_allocator);
     defer set.deinit();
 
     try set.insert(91);
@@ -216,7 +216,7 @@ test "Set.insert()" {
 }
 
 test "Set.delete()" {
-    var set = Set(i32, cmp.default_cmp).init(test_allocator);
+    var set = Set(i32, null).init(test_allocator);
     defer set.deinit();
 
     try set.insert(91);
@@ -235,7 +235,7 @@ test "Set.delete()" {
 }
 
 test "Set.contains()" {
-    var set = Set(i32, cmp.default_cmp).init(test_allocator);
+    var set = Set(i32, null).init(test_allocator);
     defer set.deinit();
 
     try set.insert(35);
@@ -263,7 +263,7 @@ test "Set.contains()" {
 }
 
 test "Set.empty()" {
-    var set = Set(i32, cmp.default_cmp).init(test_allocator);
+    var set = Set(i32, null).init(test_allocator);
     defer set.deinit();
     try set.insert(10);
     try set.insert(5);
@@ -281,7 +281,7 @@ test "Set.empty()" {
 }
 
 test "Set.format()" {
-    var set = Set(i32, cmp.default_cmp).init(test_allocator);
+    var set = Set(i32, null).init(test_allocator);
     defer set.deinit();
     try set.insert(10);
     try set.insert(5);
