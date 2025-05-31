@@ -1,0 +1,92 @@
+const std = @import("std");
+
+pub fn Queue(comptime T: type) type {
+    return struct {
+        const Self = @This();
+        const QueueNode = struct {
+            value: T,
+            prev: ?*QueueNode,
+
+            fn init(allocator: std.mem.Allocator) !*QueueNode {
+                return try allocator.create(QueueNode);
+            }
+        };
+
+        front: ?*QueueNode,
+        back: ?*QueueNode,
+        size: u32,
+        allocator: std.mem.Allocator,
+
+        pub fn init(allocator: std.mem.Allocator) Self {
+            return Self{
+                .front = null,
+                .back = null,
+                .size = 0,
+                .allocator = allocator,
+            };
+        }
+
+        pub fn deinit(self: *Self) void {
+            while (self.front) |node| {
+                self.front = node.prev;
+                self.allocator.destroy(node);
+            }
+        }
+
+        pub fn empty(self: *Self) bool {
+            return self.size == 0;
+        }
+
+        pub fn first(self: *Self) ?T {
+            if (self.front) |front| {
+                return front.value;
+            }
+            return null;
+        }
+
+        pub fn last(self: *Self) ?T {
+            if (self.back) |back| {
+                return back.value;
+            }
+            return null;
+        }
+
+        pub fn push(self: *Self, value: T) !void {
+            var node = try QueueNode.init(self.allocator);
+            node.value = value;
+            node.prev = null;
+
+            if (self.front == null and self.back == null) {
+                self.front = node;
+                self.back = node;
+            } else {
+                self.back.?.prev = node;
+                self.back = node;
+            }
+
+            self.size += 1;
+        }
+
+        pub fn pop(self: *Self) void {
+            const node = self.front;
+            if (node) |_| {
+                defer self.allocator.destroy(node.?);
+                self.front = self.front.?.prev;
+                self.size -= 1;
+            }
+        }
+
+        pub fn format(self: Self, comptime fmt: []const u8, opts: std.fmt.FormatOptions, writer: anytype) !void {
+            _ = fmt;
+            _ = opts;
+
+            try writer.writeAll("[ ");
+            var curr = self.front;
+            while (curr) |node| {
+                try writer.print("{} ", .{node.value});
+                curr = node.prev;
+            }
+            try writer.writeAll("]");
+        }
+    };
+}
