@@ -14,14 +14,12 @@ pub fn Queue(comptime T: type) type {
 
         front: ?*QueueNode,
         back: ?*QueueNode,
-        size: u32,
         allocator: std.mem.Allocator,
 
         pub fn init(allocator: std.mem.Allocator) Self {
             return Self{
                 .front = null,
                 .back = null,
-                .size = 0,
                 .allocator = allocator,
             };
         }
@@ -34,7 +32,7 @@ pub fn Queue(comptime T: type) type {
         }
 
         pub fn empty(self: *Self) bool {
-            return self.size == 0;
+            return self.front == null and self.back == null;
         }
 
         pub fn first(self: *Self) ?T {
@@ -63,16 +61,18 @@ pub fn Queue(comptime T: type) type {
                 self.back.?.prev = node;
                 self.back = node;
             }
-
-            self.size += 1;
         }
 
         pub fn pop(self: *Self) void {
             const node = self.front;
             if (node) |_| {
-                defer self.allocator.destroy(node.?);
-                self.front = self.front.?.prev;
-                self.size -= 1;
+                if (self.front == self.back) {
+                    self.back = null;
+                    self.front = null;
+                } else {
+                    self.front = self.front.?.prev;
+                }
+                self.allocator.destroy(node.?);
             }
         }
 

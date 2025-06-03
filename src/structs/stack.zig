@@ -13,13 +13,11 @@ pub fn Stack(comptime T: type) type {
         };
 
         head: ?*StackNode,
-        size: u32,
         allocator: std.mem.Allocator,
 
         pub fn init(allocator: std.mem.Allocator) Self {
             return Self{
                 .head = null,
-                .size = 0,
                 .allocator = allocator,
             };
         }
@@ -32,7 +30,7 @@ pub fn Stack(comptime T: type) type {
         }
 
         pub fn empty(self: *Self) bool {
-            return self.size == 0;
+            return self.head == null;
         }
 
         pub fn top(self: *Self) ?T {
@@ -47,15 +45,13 @@ pub fn Stack(comptime T: type) type {
             new_head.value = value;
             new_head.prev = self.head;
             self.head = new_head;
-            self.size += 1;
         }
 
         pub fn pop(self: *Self) void {
             const node = self.head;
             if (node) |_| {
-                defer self.allocator.destroy(node.?);
                 self.head = self.head.?.prev;
-                self.size -= 1;
+                self.allocator.destroy(node.?);
             }
         }
 

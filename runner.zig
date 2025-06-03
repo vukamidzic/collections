@@ -10,9 +10,9 @@ pub fn main() !void {
             t.name;
 
         t.func() catch {
-            std.debug.print("[{s}] \xE2\x86\x92 \x1b[91m\xE2\x9C\x97\x1b[0m", .{pretty_name});
+            std.log.warn("[{s}] \xE2\x86\x92 \x1b[91m\xE2\x9C\x97\x1b[0m", .{pretty_name});
             continue;
         };
-        std.debug.print("[{s}] \xE2\x86\x92 \x1b[92m\xE2\x9C\x93\x1b[0m\n", .{pretty_name});
+        std.log.info("[{s}] \xE2\x86\x92 \x1b[92m\xE2\x9C\x93\x1b[0m", .{pretty_name});
     }
 }
