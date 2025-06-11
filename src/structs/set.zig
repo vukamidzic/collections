@@ -101,8 +101,17 @@ pub fn Set(comptime T: type, comptime cmp_fn: ?fn (anytype, anytype) anyerror!Or
             return root;
         }
 
-        pub fn insert(self: *Self, value: T) !void {
-            self.root = try insert_node(self.root, value, self.allocator);
+        pub fn insert(self: *Self, value: anytype) !void {
+            const V = @TypeOf(value);
+            if (V == comptime_float and (T == f32 or T == f64)) {
+                self.root = try insert_node(self.root, @as(T, value), self.allocator);
+            } else if (V == comptime_int and (T == i32 or T == u32 or T == i64 or T == u64)) {
+                self.root = try insert_node(self.root, @as(T, value), self.allocator);
+            } else if (V == T) {
+                self.root = try insert_node(self.root, value, self.allocator);
+            } else {
+                return error.TypeMismatch;
+            }
             self.size += 1;
             try self.balance();
         }
@@ -149,9 +158,18 @@ pub fn Set(comptime T: type, comptime cmp_fn: ?fn (anytype, anytype) anyerror!Or
             return root;
         }
 
-        pub fn delete(self: *Self, value: T) !void {
+        pub fn delete(self: *Self, value: anytype) !void {
             var deleted = false;
-            self.root = try delete_node(self.root, value, self.allocator, &deleted);
+            const V = @TypeOf(value);
+            if (V == comptime_float and (T == f32 or T == f64)) {
+                self.root = try delete_node(self.root, @as(T, value), self.allocator, &deleted);
+            } else if (V == comptime_int and (T == i32 or T == u32 or T == i64 or T == u64)) {
+                self.root = try delete_node(self.root, @as(T, value), self.allocator, &deleted);
+            } else if (V == T) {
+                self.root = try delete_node(self.root, value, self.allocator, &deleted);
+            } else {
+                return error.TypeMismatch;
+            }
 
             if (deleted) {
                 self.size -= 1;
@@ -172,8 +190,17 @@ pub fn Set(comptime T: type, comptime cmp_fn: ?fn (anytype, anytype) anyerror!Or
             }
         }
 
-        pub fn contains(self: *Self, value: T) !bool {
-            return try find_node(self.root, value);
+        pub fn contains(self: *Self, value: anytype) !bool {
+            const V = @TypeOf(value);
+            if (V == comptime_float and (T == f32 or T == f64)) {
+                return try find_node(self.root, value);
+            } else if (V == comptime_int and (T == i32 or T == u32 or T == i64 or T == u64)) {
+                return try find_node(self.root, @as(T, value));
+            } else if (V == T) {
+                return try find_node(self.root, value);
+            } else {
+                return error.TypeMismatch;
+            }
         }
 
         pub fn format(self: Self, comptime fmt: []const u8, opts: std.fmt.FormatOptions, writer: anytype) !void {

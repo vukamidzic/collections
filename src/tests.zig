@@ -121,5 +121,12 @@ test "Set" {
     try testing.expectEqual(true, set.empty());
     try testing.expectEqual(0, set.size);
 
-    // TODO: test adding and deleting elements of unvalid type
+    // adding and deleting elements of unvalid type
+    try set.insert(10);
+    try set.insert(5);
+    try set.insert(20);
+    try testing.expectError(error.TypeMismatch, set.insert(10.0));
+    try testing.expectError(error.TypeMismatch, set.delete(10.0));
+    try testing.expectError(error.TypeMismatch, set.insert("hello"));
+    try testing.expectError(error.TypeMismatch, set.delete(true));
 }
