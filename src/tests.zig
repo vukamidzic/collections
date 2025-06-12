@@ -3,6 +3,7 @@ const std = @import("std");
 const Stack = @import("root.zig").Stack;
 const Queue = @import("root.zig").Queue;
 const Set = @import("root.zig").Set;
+const HashMap = @import("root.zig").HashMap;
 
 const default_cmp = @import("root.zig").default_cmp;
 const Order = std.math.Order;
@@ -140,4 +141,17 @@ test "Set" {
     try testing.expectError(error.TypeMismatch, set.delete(10.0));
     try testing.expectError(error.TypeMismatch, set.insert("hello"));
     try testing.expectError(error.TypeMismatch, set.delete(true));
+}
+
+test "HashMap" {
+    // init()
+    var map = HashMap(u32, u32).init(allocator);
+
+    // deinit()
+    defer map.deinit();
+
+    // put()
+    inline for (0..20) |i| {
+        try map.put(i, i);
+    }
 }
