@@ -49,9 +49,20 @@ pub fn Queue(comptime T: type) type {
             return null;
         }
 
-        pub fn push(self: *Self, value: T) !void {
+        pub fn push(self: *Self, value: anytype) !void {
             var node = try QueueNode.init(self.allocator);
-            node.value = value;
+
+            const V = @TypeOf(value);
+            if (V == comptime_float and (T == f32 or T == f64)) {
+                node.value = @as(T, value);
+            } else if (V == comptime_int and (T == i32 or T == u32 or T == i64 or T == u64)) {
+                node.value = @as(T, value);
+            } else if (V == T) {
+                node.value = value;    
+            } else {
+                return error.TypeMismatch;
+            }
+            
             node.prev = null;
 
             if (self.front == null and self.back == null) {

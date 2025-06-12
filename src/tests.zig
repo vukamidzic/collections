@@ -34,10 +34,15 @@ test "Stack" {
     try testing.expectEqual(20, stack.top().?);
     stack.pop();
     stack.pop();
+
     // pop() on empty stack
     stack.pop();
     stack.pop();
     try testing.expectEqual(true, stack.empty());
+
+    // push() invalid type
+    try testing.expectError(error.TypeMismatch, stack.push(10.0));
+    try testing.expectError(error.TypeMismatch, stack.push("Hello World"));
 }
 
 test "Queue" {
@@ -68,11 +73,17 @@ test "Queue" {
     try testing.expectEqual(20, queue.first().?);
     queue.pop();
     queue.pop();
+
     // pop() on empty queue
     queue.pop();
     queue.pop();
     queue.pop();
     try testing.expectEqual(true, queue.empty());
+
+    // push() invalid type
+    try testing.expectError(error.TypeMismatch, queue.push(true));
+    try testing.expectError(error.TypeMismatch, queue.push(69.420));
+    try testing.expectError(error.TypeMismatch, queue.push("Hello"));
 }
 
 test "Set" {

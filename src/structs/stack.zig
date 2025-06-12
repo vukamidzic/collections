@@ -40,9 +40,20 @@ pub fn Stack(comptime T: type) type {
             return null;
         }
 
-        pub fn push(self: *Self, value: T) !void {
+        pub fn push(self: *Self, value: anytype) !void {
             var new_head = try StackNode.init(self.allocator);
-            new_head.value = value;
+
+            const V = @TypeOf(value);
+            if (V == comptime_float and (T == f32 or T == f64)) {
+                new_head.value = @as(T, value);
+            } else if (V == comptime_int and (T == i32 or T == u32 or T == i64 or T == u64)) {
+                new_head.value = @as(T, value);
+            } else if (V == T) {
+                new_head.value = value;
+            } else {
+                return error.TypeMismatch;
+            }
+
             new_head.prev = self.head;
             self.head = new_head;
         }
