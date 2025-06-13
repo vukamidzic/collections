@@ -154,4 +154,20 @@ test "HashMap" {
     inline for (0..20) |i| {
         try map.put(i, i);
     }
+    // std.debug.print("{}\n", .{map});
+    try testing.expectEqual(false, map.empty());
+
+    // put() with existing key
+    inline for (0..20) |i| {
+        try map.put(i, 20 - i - 1);
+    }
+    // std.debug.print("{}\n", .{map});
+    try testing.expectEqual(false, map.empty());
+
+    // erase()
+    inline for (0..20) |k| {
+        try map.erase(k);
+    }
+    // std.debug.print("{}\n", .{map}); // should be empty when printed
+    try testing.expectEqual(true, map.empty());
 }

@@ -27,12 +27,23 @@ pub fn HashMap(comptime K: type, comptime V: type) type {
             }
         }
 
+        pub fn empty(self: *Self) bool {
+            for (self.buckets) |bucket| {
+                if (bucket.items.len != 0) return false;
+            }
+
+            return true;
+        }
+
+        fn get_bucket(self: *Self, key: K) *std.ArrayList(Pair) {
+            var h = std.hash.int(@as(u64, key));
+            h = h % @as(u64, self.buckets.len);
+            return &self.buckets[h];
+        }
+
         pub fn put(self: *Self, key: K, value: V) !void {
             if (@typeInfo(K) == .int) {
-                var h = std.hash.int(@as(u64, key));
-                h = h % @as(u64, self.buckets.len);
-                var bucket = &self.buckets[h];
-
+                var bucket = self.get_bucket(key);
                 for (bucket.items) |*pair| {
                     if (pair.key == key) {
                         pair.value = value;
@@ -41,6 +52,24 @@ pub fn HashMap(comptime K: type, comptime V: type) type {
                 }
 
                 try bucket.append(.{ .key = key, .value = value });
+            } else {
+                return error.NotImplemented;
+            }
+        }
+
+        pub fn erase(self: *Self, key: K) !void {
+            if (@typeInfo(K) == .int) {
+                var bucket = self.get_bucket(key);
+
+                var idx: usize = 0;
+                for (bucket.items) |*pair| {
+                    if (pair.key == key) {
+                        break;
+                    }
+                    idx += 1;
+                }
+
+                _ = bucket.swapRemove(idx);
             } else {
                 return error.NotImplemented;
             }
