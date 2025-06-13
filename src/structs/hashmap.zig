@@ -75,6 +75,34 @@ pub fn HashMap(comptime K: type, comptime V: type) type {
             }
         }
 
+        pub fn find(self: *Self, key: K) ?V {
+            if (@typeInfo(K) == .int) {
+                const bucket = self.get_bucket(key);
+                for (bucket.items) |pair| {
+                    if (pair.key == key) {
+                        return pair.value;
+                    }
+                }
+                return null;
+            } else {
+                return error.NotImplemented;
+            }
+        }
+
+        pub fn contains(self: *Self, key: K) bool {
+            if (@typeInfo(K) == .int) {
+                const bucket = self.get_bucket(key);
+                for (bucket.items) |pair| {
+                    if (pair.key == key) {
+                        return true;
+                    }
+                }
+                return false;
+            } else {
+                return error.NotImplemented;
+            }
+        }
+
         pub fn format(self: Self, comptime fmt: []const u8, opts: std.fmt.FormatOptions, writer: anytype) !void {
             _ = fmt;
             _ = opts;

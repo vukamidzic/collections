@@ -170,4 +170,19 @@ test "HashMap" {
     }
     // std.debug.print("{}\n", .{map}); // should be empty when printed
     try testing.expectEqual(true, map.empty());
+
+    // find()
+    inline for (0..20) |i| {
+        try map.put(i, i);
+    }
+    try testing.expectEqual(19, map.find(19));
+    try testing.expectEqual(null, map.find(35));
+    try testing.expectEqual(7, map.find(7));
+    try testing.expectEqual(null, map.find(20));
+
+    // contains()
+    try testing.expectEqual(true, map.contains(14));
+    try testing.expectEqual(false, map.contains(45));
+    try testing.expectEqual(true, map.contains(3));
+    try testing.expectEqual(false, map.contains(50));
 }
