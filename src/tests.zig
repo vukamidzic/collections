@@ -144,45 +144,48 @@ test "Set" {
 }
 
 test "HashMap" {
-    // init()
-    var map = HashMap(u32, u32).init(allocator);
+    const types = [_]type{ u32, i32, f32, f64 };
+    inline for (types) |K| {
+        // init()
+        var map = HashMap(K, u32).init(allocator);
 
-    // deinit()
-    defer map.deinit();
+        // deinit()
+        defer map.deinit();
 
-    // put()
-    inline for (0..20) |i| {
-        try map.put(i, i);
+        // put()
+        inline for (0..20) |i| {
+            try map.put(@as(K, i), i);
+        }
+        // std.debug.print("{}\n", .{map});
+        try testing.expectEqual(false, map.empty());
+
+        // put() with existing key
+        inline for (0..20) |i| {
+            try map.put(@as(K, i), 20 - i - 1);
+        }
+        // std.debug.print("{}\n", .{map});
+        try testing.expectEqual(false, map.empty());
+
+        // erase()
+        inline for (0..20) |k| {
+            try map.erase(@as(K, k));
+        }
+        // std.debug.print("{}\n", .{map}); // should be empty when printed
+        try testing.expectEqual(true, map.empty());
+
+        // find()
+        inline for (0..20) |i| {
+            try map.put(@as(K, i), i);
+        }
+        try testing.expectEqual(19, map.find(19));
+        try testing.expectEqual(null, map.find(35));
+        try testing.expectEqual(7, map.find(7));
+        try testing.expectEqual(null, map.find(20));
+
+        // contains()
+        try testing.expectEqual(true, map.contains(14));
+        try testing.expectEqual(false, map.contains(45));
+        try testing.expectEqual(true, map.contains(3));
+        try testing.expectEqual(false, map.contains(50));
     }
-    // std.debug.print("{}\n", .{map});
-    try testing.expectEqual(false, map.empty());
-
-    // put() with existing key
-    inline for (0..20) |i| {
-        try map.put(i, 20 - i - 1);
-    }
-    // std.debug.print("{}\n", .{map});
-    try testing.expectEqual(false, map.empty());
-
-    // erase()
-    inline for (0..20) |k| {
-        try map.erase(k);
-    }
-    // std.debug.print("{}\n", .{map}); // should be empty when printed
-    try testing.expectEqual(true, map.empty());
-
-    // find()
-    inline for (0..20) |i| {
-        try map.put(i, i);
-    }
-    try testing.expectEqual(19, map.find(19));
-    try testing.expectEqual(null, map.find(35));
-    try testing.expectEqual(7, map.find(7));
-    try testing.expectEqual(null, map.find(20));
-
-    // contains()
-    try testing.expectEqual(true, map.contains(14));
-    try testing.expectEqual(false, map.contains(45));
-    try testing.expectEqual(true, map.contains(3));
-    try testing.expectEqual(false, map.contains(50));
 }

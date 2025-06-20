@@ -35,72 +35,78 @@ pub fn HashMap(comptime K: type, comptime V: type) type {
             return true;
         }
 
-        fn get_bucket(self: *Self, key: K) *std.ArrayList(Pair) {
-            var h = std.hash.int(@as(u64, key));
-            h = h % @as(u64, self.buckets.len);
-            return &self.buckets[h];
+        fn get_bucket(self: *Self, key: K) !*std.ArrayList(Pair) {
+            const info = @typeInfo(K);
+            switch (info) {
+                .int, .comptime_int => {
+                    if (info.int.signedness == .signed) {
+                        const U = std.meta.Int(.unsigned, info.int.bits);
+                        const ukey: U = @bitCast(key);
+                        var h = std.hash.int(@as(u64, ukey));
+                        h = h % @as(u64, self.buckets.len);
+                        return &self.buckets[h];
+                    } else {
+                        var h = std.hash.int(@as(u64, key));
+                        h = h % @as(u64, self.buckets.len);
+                        return &self.buckets[h];
+                    }
+                },
+                .float, .comptime_float => {
+                    const ukey: u64 = if (K == f32) @bitCast(@as(f64, key)) else @bitCast(key);
+                    var h = std.hash.int(ukey);
+                    h = h % @as(u64, self.buckets.len);
+                    return &self.buckets[h];
+                },
+                else => {
+                    return error.NotImplemented;
+                },
+            }
         }
 
         pub fn put(self: *Self, key: K, value: V) !void {
-            if (@typeInfo(K) == .int) {
-                var bucket = self.get_bucket(key);
-                for (bucket.items) |*pair| {
-                    if (pair.key == key) {
-                        pair.value = value;
-                        return;
-                    }
+            var bucket = self.get_bucket(key) catch |err| return err;
+            for (bucket.items) |*pair| {
+                if (pair.key == key) {
+                    pair.value = value;
+                    return;
                 }
-
-                try bucket.append(.{ .key = key, .value = value });
-            } else {
-                return error.NotImplemented;
             }
+
+            try bucket.append(.{ .key = key, .value = value });
         }
 
         pub fn erase(self: *Self, key: K) !void {
-            if (@typeInfo(K) == .int) {
-                var bucket = self.get_bucket(key);
+            var bucket = self.get_bucket(key) catch |err| return err;
 
-                var idx: usize = 0;
-                for (bucket.items) |*pair| {
-                    if (pair.key == key) {
-                        break;
-                    }
-                    idx += 1;
+            var idx: usize = 0;
+            for (bucket.items) |*pair| {
+                if (pair.key == key) {
+                    break;
                 }
-
-                _ = bucket.swapRemove(idx);
-            } else {
-                return error.NotImplemented;
+                idx += 1;
             }
+
+            if (bucket.items.len > 0 and idx < bucket.items.len) _ = bucket.swapRemove(idx);
         }
 
         pub fn find(self: *Self, key: K) ?V {
-            if (@typeInfo(K) == .int) {
-                const bucket = self.get_bucket(key);
-                for (bucket.items) |pair| {
-                    if (pair.key == key) {
-                        return pair.value;
-                    }
+            const bucket = self.get_bucket(key) catch |err| return err;
+            for (bucket.items) |pair| {
+                if (pair.key == key) {
+                    return pair.value;
                 }
-                return null;
-            } else {
-                return error.NotImplemented;
             }
+            return null;
         }
 
         pub fn contains(self: *Self, key: K) bool {
-            if (@typeInfo(K) == .int) {
-                const bucket = self.get_bucket(key);
-                for (bucket.items) |pair| {
-                    if (pair.key == key) {
-                        return true;
-                    }
+            const bucket = self.get_bucket(key) catch |err| return err;
+            for (bucket.items) |pair| {
+                if (pair.key == key) {
+                    return true;
                 }
-                return false;
-            } else {
-                return error.NotImplemented;
             }
+            return false;
         }
 
         pub fn format(self: Self, comptime fmt: []const u8, opts: std.fmt.FormatOptions, writer: anytype) !void {
