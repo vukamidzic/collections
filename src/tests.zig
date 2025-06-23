@@ -144,8 +144,9 @@ test "Set" {
 }
 
 test "HashMap" {
-    const types = [_]type{ u32, i32, f32, f64 };
-    inline for (types) |K| {
+    // unsigned int and float types
+    const types_1 = [_]type{ u8, u16, u32, f32, f64 };
+    inline for (types_1) |K| {
         // init()
         var map = HashMap(K, u32).init(allocator);
 
@@ -153,39 +154,118 @@ test "HashMap" {
         defer map.deinit();
 
         // put()
-        inline for (0..20) |i| {
-            try map.put(@as(K, i), i);
+        for (0..100) |i| {
+            var tmp_i: K = undefined;
+            if (K == f32 or K == f64) {
+                tmp_i = @floatFromInt(i);
+            } else {
+                tmp_i = @intCast(i);
+            }
+            const v: u32 = @intCast(i);
+            try map.put(tmp_i, v);
         }
         // std.debug.print("{}\n", .{map});
         try testing.expectEqual(false, map.empty());
 
         // put() with existing key
-        inline for (0..20) |i| {
-            try map.put(@as(K, i), 20 - i - 1);
+        for (0..100) |i| {
+            var tmp_i: K = undefined;
+            if (K == f32 or K == f64) {
+                tmp_i = @floatFromInt(i);
+            } else {
+                tmp_i = @intCast(i);
+            }
+            const v: u32 = @intCast(i);
+            try map.put(tmp_i, v);
         }
         // std.debug.print("{}\n", .{map});
         try testing.expectEqual(false, map.empty());
 
         // erase()
-        inline for (0..20) |k| {
-            try map.erase(@as(K, k));
+        for (0..100) |k| {
+            var tmp_k: K = undefined;
+            if (K == f32 or K == f64) {
+                tmp_k = @floatFromInt(k);
+            } else {
+                tmp_k = @intCast(k);
+            }
+            try map.erase(tmp_k);
         }
         // std.debug.print("{}\n", .{map}); // should be empty when printed
         try testing.expectEqual(true, map.empty());
 
         // find()
-        inline for (0..20) |i| {
-            try map.put(@as(K, i), i);
+        for (0..100) |i| {
+            var tmp_i: K = undefined;
+            if (K == f32 or K == f64) {
+                tmp_i = @floatFromInt(i);
+            } else {
+                tmp_i = @intCast(i);
+            }
+            const v: u32 = @intCast(i);
+            try map.put(tmp_i, v);
         }
         try testing.expectEqual(19, map.find(19));
-        try testing.expectEqual(null, map.find(35));
+        try testing.expectEqual(null, map.find(135));
         try testing.expectEqual(7, map.find(7));
-        try testing.expectEqual(null, map.find(20));
+        try testing.expectEqual(null, map.find(150));
 
         // contains()
         try testing.expectEqual(true, map.contains(14));
-        try testing.expectEqual(false, map.contains(45));
+        try testing.expectEqual(false, map.contains(245));
         try testing.expectEqual(true, map.contains(3));
-        try testing.expectEqual(false, map.contains(50));
+        try testing.expectEqual(false, map.contains(150));
+    }
+
+    const types_2 = [_]type{ i8, i16, i32 };
+    inline for (types_2) |K| {
+        // init()
+        var map = HashMap(K, u32).init(allocator);
+
+        // deinit()
+        defer map.deinit();
+
+        // put()
+        for (1..100) |i| {
+            const tmp_i: K = @intCast(i);
+            const v: u32 = @intCast(i);
+            try map.put(-tmp_i, v);
+        }
+        // std.debug.print("{}\n", .{map});
+        try testing.expectEqual(false, map.empty());
+
+        // put() with existing key
+        for (1..100) |i| {
+            const tmp_i: K = @intCast(i);
+            const v: u32 = @intCast(i);
+            try map.put(-tmp_i, v);
+        }
+        // std.debug.print("{}\n", .{map});
+        try testing.expectEqual(false, map.empty());
+
+        // erase()
+        for (1..100) |k| {
+            const tmp_k: K = @intCast(k);
+            try map.erase(-tmp_k);
+        }
+        // std.debug.print("{}\n", .{map}); // should be empty when printed
+        try testing.expectEqual(true, map.empty());
+
+        // find()
+        inline for (1..100) |i| {
+            const tmp_i: K = @intCast(i);
+            const v: u32 = @intCast(i);
+            try map.put(-tmp_i, v);
+        }
+        try testing.expectEqual(27, map.find(-27));
+        try testing.expectEqual(null, map.find(-101));
+        try testing.expectEqual(59, map.find(-59));
+        try testing.expectEqual(null, map.find(20));
+
+        // contains()
+        try testing.expectEqual(true, map.contains(-14));
+        try testing.expectEqual(false, map.contains(45));
+        try testing.expectEqual(true, map.contains(-8));
+        try testing.expectEqual(false, map.contains(-120));
     }
 }
