@@ -145,7 +145,7 @@ test "Set" {
 
 test "HashMap" {
     // unsigned int and float types
-    const types_1 = [_]type{ u8, u16, u32, f32, f64 };
+    const types_1 = [_]type{ u8, u16, u32 };
     inline for (types_1) |K| {
         // init()
         var map = HashMap(K, u32).init(allocator);
@@ -252,7 +252,7 @@ test "HashMap" {
         try testing.expectEqual(true, map.empty());
 
         // find()
-        inline for (1..100) |i| {
+        for (1..100) |i| {
             const tmp_i: K = @intCast(i);
             const v: u32 = @intCast(i);
             try map.put(-tmp_i, v);
@@ -267,5 +267,62 @@ test "HashMap" {
         try testing.expectEqual(false, map.contains(45));
         try testing.expectEqual(true, map.contains(-8));
         try testing.expectEqual(false, map.contains(-120));
+    }
+
+    const types_3 = [_]type{ f32, f64 };
+    inline for (types_3) |K| {
+        // init()
+        var map = HashMap(K, i32).init(allocator);
+
+        // deinit()
+        defer map.deinit();
+
+        // put()
+        var i: K = -100.0;
+        while (i != 100.0) : (i += 1.0) {
+            const tmp_i: K = @floatCast(i);
+            const v: i32 = @intFromFloat(i);
+            try map.put(tmp_i, v);
+        }
+        // std.debug.print("{}\n", .{map});
+        try testing.expectEqual(false, map.empty());
+
+        // put() with existing key
+        i = -100.0;
+        while (i != 100.0) : (i += 1.0) {
+            const tmp_i: K = @floatCast(i);
+            const v: i32 = @intFromFloat(i);
+            try map.put(tmp_i, v);
+        }
+        // std.debug.print("{}\n", .{map});
+        try testing.expectEqual(false, map.empty());
+
+        // erase()
+        var k: K = -100.0;
+        while (k != 100.0) : (k += 1.0) {
+            const tmp_k: K = @floatCast(k);
+            try map.erase(tmp_k);
+        }
+        // std.debug.print("{}\n", .{map}); // should be empty when printed
+        try testing.expectEqual(true, map.empty());
+
+        // find()
+        i = -100.0;
+        while (i != 100.0) : (i += 1.0) {
+            const tmp_i: K = @floatCast(i);
+            const v: i32 = @intFromFloat(i);
+            try map.put(tmp_i, v);
+        }
+        try testing.expectEqual(-27, map.find(-27.0));
+        try testing.expectEqual(null, map.find(-101.0));
+        try testing.expectEqual(-59, map.find(-59.0));
+        try testing.expectEqual(null, map.find(120.0));
+
+        // contains()
+        try testing.expectEqual(true, map.contains(-14.0));
+        try testing.expectEqual(true, map.contains(35.0));
+        try testing.expectEqual(true, map.contains(-8.0));
+        try testing.expectEqual(false, map.contains(-120.0));
+        try testing.expectEqual(false, map.contains(150.0));
     }
 }
