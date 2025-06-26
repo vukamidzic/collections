@@ -325,4 +325,16 @@ test "HashMap" {
         try testing.expectEqual(false, map.contains(-120.0));
         try testing.expectEqual(false, map.contains(150.0));
     }
+
+    // init()
+    var map = HashMap([]u8, i32).init(allocator);
+
+    // deinit()
+    defer map.deinit();
+
+    // put()
+    try map.put("Hello"[0..], 1);
+    try map.put("World"[0..], 2);
+    try map.put("Zig"[0..], 3);
+    std.debug.print("{any}\n", .{map});
 }

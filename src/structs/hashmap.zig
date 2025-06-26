@@ -37,6 +37,7 @@ pub fn HashMap(comptime K: type, comptime V: type) type {
 
         fn get_bucket(self: *Self, key: K) !*std.ArrayList(Pair) {
             const info = @typeInfo(K);
+            // TODO: Define hash function for structs
             switch (info) {
                 .int, .comptime_int => {
                     if (info.int.signedness == .signed) {
@@ -57,6 +58,20 @@ pub fn HashMap(comptime K: type, comptime V: type) type {
                     h = h % @as(u64, self.buckets.len);
                     return &self.buckets[h];
                 },
+                .array => {
+                    if (info.array.child == u8) {
+                        var h = std.hash.Wyhash.hash(0, key);
+                        h = h % @as(u64, self.buckets.len);
+                        return &self.buckets[h];
+                    }
+                },
+                .pointer => {
+                    if (info.pointer.child == u8) {
+                        var h = std.hash.Wyhash.hash(0, key);
+                        h = h % @as(u64, self.buckets.len);
+                        return &self.buckets[h];
+                    }
+                },
                 else => {
                     return error.NotImplemented;
                 },
@@ -65,14 +80,38 @@ pub fn HashMap(comptime K: type, comptime V: type) type {
 
         pub fn put(self: *Self, key: K, value: V) !void {
             var bucket = self.get_bucket(key) catch |err| return err;
-            for (bucket.items) |*pair| {
-                if (pair.key == key) {
-                    pair.value = value;
-                    return;
-                }
-            }
 
-            try bucket.append(.{ .key = key, .value = value });
+            const cmp_fn: ?fn (K, K) bool = comptime blk: {
+                const info = @typeInfo(K);
+                switch (info) {
+                    .int, .comptime_int, .float, .comptime_float => break :blk struct {
+                        fn cmp(a: K, b: K) bool {
+                            return a == b;
+                        }
+                    }.cmp,
+                    .array => break :blk struct {
+                        fn cmp(a: K, b: K) bool {
+                            return std.mem.eql(info.array.child, a, b);
+                        }
+                    }.cmp,
+                    .pointer => break :blk struct {
+                        fn cmp(a: K, b: K) bool {
+                            return std.mem.eql(info.pointer.child, a, b);
+                        }
+                    }.cmp,
+                    else => break :blk null,
+                }
+            };
+
+            if (cmp_fn != null) {
+                for (bucket.items) |*pair| {
+                    if (cmp_fn.?(pair.key, key)) {
+                        pair.value = value;
+                        return;
+                    }
+                }
+                try bucket.append(.{ .key = key, .value = value });
+            } else return error.NotImplemented;
         }
 
         pub fn erase(self: *Self, key: K) !void {
