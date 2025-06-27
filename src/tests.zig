@@ -326,15 +326,93 @@ test "HashMap" {
         try testing.expectEqual(false, map.contains(150.0));
     }
 
-    // init()
-    var map = HashMap([]u8, i32).init(allocator);
+    // String literal as key
+    {
+        // init()
+        var map = HashMap([]const u8, i32).init(allocator);
 
-    // deinit()
-    defer map.deinit();
+        // deinit()
+        defer map.deinit();
 
-    // put()
-    try map.put("Hello"[0..], 1);
-    try map.put("World"[0..], 2);
-    try map.put("Zig"[0..], 3);
-    std.debug.print("{any}\n", .{map});
+        // put()
+        try map.put("Hello", 1);
+        try map.put("World", 2);
+        try map.put("Zig", 3);
+        // std.debug.print("{any}\n", .{map});
+        try testing.expectEqual(false, map.empty());
+
+        // put() with existing key
+        try map.put("Hello", 1);
+        try map.put("World", 2);
+        try map.put("Zig", 3);
+        // std.debug.print("{any}\n", .{map});
+        try testing.expectEqual(false, map.empty());
+
+        // erase()
+        try map.erase("Hello");
+        try map.erase("World");
+        try map.erase("Zig");
+        // std.debug.print("{any}\n", .{map}); // should be empty when printed
+        try testing.expectEqual(true, map.empty());
+
+        // find()
+        try map.put("Hello", 1);
+        try map.put("World", 2);
+        try map.put("Zig", 3);
+        try testing.expectEqual(1, map.find("Hello"));
+        try testing.expectEqual(null, map.find("Ziggy"));
+        try testing.expectEqual(2, map.find("World"));
+
+        // contains()
+        try testing.expectEqual(true, map.contains("Hello"));
+        try testing.expectEqual(false, map.contains("Ziggy"));
+        try testing.expectEqual(true, map.contains("World"));
+        try testing.expectEqual(false, map.contains("Hi"));
+    }
+
+    // Struct as key
+    {
+        const Point = struct { x: f64, y: f64 };
+        // init()
+        var map = HashMap(Point, i32).init(allocator);
+
+        // deinit()
+        defer map.deinit();
+
+        // put()
+        try map.put(Point{ .x = 1.0, .y = 1.0 }, 1);
+        try map.put(Point{ .x = 3.0, .y = 10.0 }, 2);
+        try map.put(Point{ .x = -5.0, .y = -1.0 }, 3);
+        // std.debug.print("{any}\n", .{map});
+        try testing.expectEqual(false, map.empty());
+
+        // put() with existing key
+        try map.put(Point{ .x = 1.0, .y = 1.0 }, 1);
+        try map.put(Point{ .x = 3.0, .y = 10.0 }, 2);
+        try map.put(Point{ .x = -5.0, .y = -1.0 }, 3);
+        // std.debug.print("{any}\n", .{map});
+        try testing.expectEqual(false, map.empty());
+
+        // erase()
+        try map.erase(Point{ .x = 1.0, .y = 1.0 });
+        try map.erase(Point{ .x = 3.0, .y = 10.0 });
+        try map.erase(Point{ .x = -5.0, .y = -1.0 });
+        // std.debug.print("{any}\n", .{map}); // should be empty when printed
+        try testing.expectEqual(true, map.empty());
+
+        // find()
+        try map.put(Point{ .x = 1.0, .y = 1.0 }, 1);
+        try map.put(Point{ .x = 3.0, .y = 10.0 }, 2);
+        try map.put(Point{ .x = -5.0, .y = -1.0 }, 3);
+        try testing.expectEqual(1, map.find(Point{ .x = 1.0, .y = 1.0 }));
+        try testing.expectEqual(null, map.find(Point{ .x = 2.0, .y = 2.0 }));
+        try testing.expectEqual(2, map.find(Point{ .x = 3.0, .y = 10.0 }));
+        try testing.expectEqual(null, map.find(Point{ .x = -10.0, .y = -10.0 }));
+
+        // contains()
+        try testing.expectEqual(true, map.contains(Point{ .x = 1.0, .y = 1.0 }));
+        try testing.expectEqual(false, map.contains(Point{ .x = 2.0, .y = 2.0 }));
+        try testing.expectEqual(true, map.contains(Point{ .x = 3.0, .y = 10.0 }));
+        try testing.expectEqual(false, map.contains(Point{ .x = -10.0, .y = -10.0 }));
+    }
 }
