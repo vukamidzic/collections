@@ -1,16 +1,17 @@
 const std = @import("std");
 
-pub fn HashMap(comptime K: type, comptime V: type) type {
+pub fn HashMap(init_cap: u32, comptime K: type, comptime V: type) type {
     return struct {
         const Self = @This();
         const Pair = struct { key: K, value: V };
+        // TODO try using arrays instead of lists
         const Bucket = std.ArrayList(Pair);
 
-        buckets: [16]Bucket, // TODO: make this dynamic
+        buckets: [init_cap]Bucket,
         allocator: std.mem.Allocator,
 
         pub fn init(allocator: std.mem.Allocator) Self {
-            var buckets: [16]Bucket = undefined;
+            var buckets: [init_cap]Bucket = undefined;
             for (&buckets) |*bucket| {
                 bucket.* = Bucket.init(allocator);
             }

@@ -144,275 +144,277 @@ test "Set" {
 }
 
 test "HashMap" {
-    // unsigned int and float types
-    const types_1 = [_]type{ u8, u16, u32 };
-    inline for (types_1) |K| {
-        // init()
-        var map = HashMap(K, u32).init(allocator);
+    inline for (.{ 8, 16, 32, 64, 128 }) |init_cap| {
+        // unsigned int and float types
+        const types_1 = [_]type{ u8, u16, u32 };
+        inline for (types_1) |K| {
+            // init()
+            var map = HashMap(init_cap, K, u32).init(allocator);
 
-        // deinit()
-        defer map.deinit();
+            // deinit()
+            defer map.deinit();
 
-        // put()
-        for (0..100) |i| {
-            var tmp_i: K = undefined;
-            if (K == f32 or K == f64) {
-                tmp_i = @floatFromInt(i);
-            } else {
-                tmp_i = @intCast(i);
+            // put()
+            for (0..100) |i| {
+                var tmp_i: K = undefined;
+                if (K == f32 or K == f64) {
+                    tmp_i = @floatFromInt(i);
+                } else {
+                    tmp_i = @intCast(i);
+                }
+                const v: u32 = @intCast(i);
+                try map.put(tmp_i, v);
             }
-            const v: u32 = @intCast(i);
-            try map.put(tmp_i, v);
-        }
-        // std.debug.print("{}\n", .{map});
-        try testing.expectEqual(false, map.empty());
+            // std.debug.print("{}\n", .{map});
+            try testing.expectEqual(false, map.empty());
 
-        // put() with existing key
-        for (0..100) |i| {
-            var tmp_i: K = undefined;
-            if (K == f32 or K == f64) {
-                tmp_i = @floatFromInt(i);
-            } else {
-                tmp_i = @intCast(i);
+            // put() with existing key
+            for (0..100) |i| {
+                var tmp_i: K = undefined;
+                if (K == f32 or K == f64) {
+                    tmp_i = @floatFromInt(i);
+                } else {
+                    tmp_i = @intCast(i);
+                }
+                const v: u32 = @intCast(i);
+                try map.put(tmp_i, v);
             }
-            const v: u32 = @intCast(i);
-            try map.put(tmp_i, v);
-        }
-        // std.debug.print("{}\n", .{map});
-        try testing.expectEqual(false, map.empty());
+            // std.debug.print("{}\n", .{map});
+            try testing.expectEqual(false, map.empty());
 
-        // erase()
-        for (0..100) |k| {
-            var tmp_k: K = undefined;
-            if (K == f32 or K == f64) {
-                tmp_k = @floatFromInt(k);
-            } else {
-                tmp_k = @intCast(k);
+            // erase()
+            for (0..100) |k| {
+                var tmp_k: K = undefined;
+                if (K == f32 or K == f64) {
+                    tmp_k = @floatFromInt(k);
+                } else {
+                    tmp_k = @intCast(k);
+                }
+                try map.erase(tmp_k);
             }
-            try map.erase(tmp_k);
-        }
-        // std.debug.print("{}\n", .{map}); // should be empty when printed
-        try testing.expectEqual(true, map.empty());
+            // std.debug.print("{}\n", .{map}); // should be empty when printed
+            try testing.expectEqual(true, map.empty());
 
-        // find()
-        for (0..100) |i| {
-            var tmp_i: K = undefined;
-            if (K == f32 or K == f64) {
-                tmp_i = @floatFromInt(i);
-            } else {
-                tmp_i = @intCast(i);
+            // find()
+            for (0..100) |i| {
+                var tmp_i: K = undefined;
+                if (K == f32 or K == f64) {
+                    tmp_i = @floatFromInt(i);
+                } else {
+                    tmp_i = @intCast(i);
+                }
+                const v: u32 = @intCast(i);
+                try map.put(tmp_i, v);
             }
-            const v: u32 = @intCast(i);
-            try map.put(tmp_i, v);
+            try testing.expectEqual(19, map.find(19));
+            try testing.expectEqual(null, map.find(135));
+            try testing.expectEqual(7, map.find(7));
+            try testing.expectEqual(null, map.find(150));
+
+            // contains()
+            try testing.expectEqual(true, map.contains(14));
+            try testing.expectEqual(false, map.contains(245));
+            try testing.expectEqual(true, map.contains(3));
+            try testing.expectEqual(false, map.contains(150));
         }
-        try testing.expectEqual(19, map.find(19));
-        try testing.expectEqual(null, map.find(135));
-        try testing.expectEqual(7, map.find(7));
-        try testing.expectEqual(null, map.find(150));
 
-        // contains()
-        try testing.expectEqual(true, map.contains(14));
-        try testing.expectEqual(false, map.contains(245));
-        try testing.expectEqual(true, map.contains(3));
-        try testing.expectEqual(false, map.contains(150));
-    }
+        const types_2 = [_]type{ i8, i16, i32 };
+        inline for (types_2) |K| {
+            // init()
+            var map = HashMap(init_cap, K, u32).init(allocator);
 
-    const types_2 = [_]type{ i8, i16, i32 };
-    inline for (types_2) |K| {
-        // init()
-        var map = HashMap(K, u32).init(allocator);
+            // deinit()
+            defer map.deinit();
 
-        // deinit()
-        defer map.deinit();
+            // put()
+            for (1..100) |i| {
+                const tmp_i: K = @intCast(i);
+                const v: u32 = @intCast(i);
+                try map.put(-tmp_i, v);
+            }
+            // std.debug.print("{}\n", .{map});
+            try testing.expectEqual(false, map.empty());
 
-        // put()
-        for (1..100) |i| {
-            const tmp_i: K = @intCast(i);
-            const v: u32 = @intCast(i);
-            try map.put(-tmp_i, v);
+            // put() with existing key
+            for (1..100) |i| {
+                const tmp_i: K = @intCast(i);
+                const v: u32 = @intCast(i);
+                try map.put(-tmp_i, v);
+            }
+            // std.debug.print("{}\n", .{map});
+            try testing.expectEqual(false, map.empty());
+
+            // erase()
+            for (1..100) |k| {
+                const tmp_k: K = @intCast(k);
+                try map.erase(-tmp_k);
+            }
+            // std.debug.print("{}\n", .{map}); // should be empty when printed
+            try testing.expectEqual(true, map.empty());
+
+            // find()
+            for (1..100) |i| {
+                const tmp_i: K = @intCast(i);
+                const v: u32 = @intCast(i);
+                try map.put(-tmp_i, v);
+            }
+            try testing.expectEqual(27, map.find(-27));
+            try testing.expectEqual(null, map.find(-101));
+            try testing.expectEqual(59, map.find(-59));
+            try testing.expectEqual(null, map.find(20));
+
+            // contains()
+            try testing.expectEqual(true, map.contains(-14));
+            try testing.expectEqual(false, map.contains(45));
+            try testing.expectEqual(true, map.contains(-8));
+            try testing.expectEqual(false, map.contains(-120));
         }
-        // std.debug.print("{}\n", .{map});
-        try testing.expectEqual(false, map.empty());
 
-        // put() with existing key
-        for (1..100) |i| {
-            const tmp_i: K = @intCast(i);
-            const v: u32 = @intCast(i);
-            try map.put(-tmp_i, v);
+        const types_3 = [_]type{ f32, f64 };
+        inline for (types_3) |K| {
+            // init()
+            var map = HashMap(init_cap, K, i32).init(allocator);
+
+            // deinit()
+            defer map.deinit();
+
+            // put()
+            var i: K = -100.0;
+            while (i != 100.0) : (i += 1.0) {
+                const tmp_i: K = @floatCast(i);
+                const v: i32 = @intFromFloat(i);
+                try map.put(tmp_i, v);
+            }
+            // std.debug.print("{}\n", .{map});
+            try testing.expectEqual(false, map.empty());
+
+            // put() with existing key
+            i = -100.0;
+            while (i != 100.0) : (i += 1.0) {
+                const tmp_i: K = @floatCast(i);
+                const v: i32 = @intFromFloat(i);
+                try map.put(tmp_i, v);
+            }
+            // std.debug.print("{}\n", .{map});
+            try testing.expectEqual(false, map.empty());
+
+            // erase()
+            var k: K = -100.0;
+            while (k != 100.0) : (k += 1.0) {
+                const tmp_k: K = @floatCast(k);
+                try map.erase(tmp_k);
+            }
+            // std.debug.print("{}\n", .{map}); // should be empty when printed
+            try testing.expectEqual(true, map.empty());
+
+            // find()
+            i = -100.0;
+            while (i != 100.0) : (i += 1.0) {
+                const tmp_i: K = @floatCast(i);
+                const v: i32 = @intFromFloat(i);
+                try map.put(tmp_i, v);
+            }
+            try testing.expectEqual(-27, map.find(-27.0));
+            try testing.expectEqual(null, map.find(-101.0));
+            try testing.expectEqual(-59, map.find(-59.0));
+            try testing.expectEqual(null, map.find(120.0));
+
+            // contains()
+            try testing.expectEqual(true, map.contains(-14.0));
+            try testing.expectEqual(true, map.contains(35.0));
+            try testing.expectEqual(true, map.contains(-8.0));
+            try testing.expectEqual(false, map.contains(-120.0));
+            try testing.expectEqual(false, map.contains(150.0));
         }
-        // std.debug.print("{}\n", .{map});
-        try testing.expectEqual(false, map.empty());
 
-        // erase()
-        for (1..100) |k| {
-            const tmp_k: K = @intCast(k);
-            try map.erase(-tmp_k);
+        // String literal as key
+        {
+            // init()
+            var map = HashMap(init_cap, []const u8, i32).init(allocator);
+
+            // deinit()
+            defer map.deinit();
+
+            // put()
+            try map.put("Hello", 1);
+            try map.put("World", 2);
+            try map.put("Zig", 3);
+            // std.debug.print("{any}\n", .{map});
+            try testing.expectEqual(false, map.empty());
+
+            // put() with existing key
+            try map.put("Hello", 1);
+            try map.put("World", 2);
+            try map.put("Zig", 3);
+            // std.debug.print("{any}\n", .{map});
+            try testing.expectEqual(false, map.empty());
+
+            // erase()
+            try map.erase("Hello");
+            try map.erase("World");
+            try map.erase("Zig");
+            // std.debug.print("{any}\n", .{map}); // should be empty when printed
+            try testing.expectEqual(true, map.empty());
+
+            // find()
+            try map.put("Hello", 1);
+            try map.put("World", 2);
+            try map.put("Zig", 3);
+            try testing.expectEqual(1, map.find("Hello"));
+            try testing.expectEqual(null, map.find("Ziggy"));
+            try testing.expectEqual(2, map.find("World"));
+
+            // contains()
+            try testing.expectEqual(true, map.contains("Hello"));
+            try testing.expectEqual(false, map.contains("Ziggy"));
+            try testing.expectEqual(true, map.contains("World"));
+            try testing.expectEqual(false, map.contains("Hi"));
         }
-        // std.debug.print("{}\n", .{map}); // should be empty when printed
-        try testing.expectEqual(true, map.empty());
 
-        // find()
-        for (1..100) |i| {
-            const tmp_i: K = @intCast(i);
-            const v: u32 = @intCast(i);
-            try map.put(-tmp_i, v);
+        // Struct as key
+        {
+            const Point = struct { x: f64, y: f64 };
+            // init()
+            var map = HashMap(init_cap, Point, i32).init(allocator);
+
+            // deinit()
+            defer map.deinit();
+
+            // put()
+            try map.put(Point{ .x = 1.0, .y = 1.0 }, 1);
+            try map.put(Point{ .x = 3.0, .y = 10.0 }, 2);
+            try map.put(Point{ .x = -5.0, .y = -1.0 }, 3);
+            // std.debug.print("{any}\n", .{map});
+            try testing.expectEqual(false, map.empty());
+
+            // put() with existing key
+            try map.put(Point{ .x = 1.0, .y = 1.0 }, 1);
+            try map.put(Point{ .x = 3.0, .y = 10.0 }, 2);
+            try map.put(Point{ .x = -5.0, .y = -1.0 }, 3);
+            // std.debug.print("{any}\n", .{map});
+            try testing.expectEqual(false, map.empty());
+
+            // erase()
+            try map.erase(Point{ .x = 1.0, .y = 1.0 });
+            try map.erase(Point{ .x = 3.0, .y = 10.0 });
+            try map.erase(Point{ .x = -5.0, .y = -1.0 });
+            // std.debug.print("{any}\n", .{map}); // should be empty when printed
+            try testing.expectEqual(true, map.empty());
+
+            // find()
+            try map.put(Point{ .x = 1.0, .y = 1.0 }, 1);
+            try map.put(Point{ .x = 3.0, .y = 10.0 }, 2);
+            try map.put(Point{ .x = -5.0, .y = -1.0 }, 3);
+            try testing.expectEqual(1, map.find(Point{ .x = 1.0, .y = 1.0 }));
+            try testing.expectEqual(null, map.find(Point{ .x = 2.0, .y = 2.0 }));
+            try testing.expectEqual(2, map.find(Point{ .x = 3.0, .y = 10.0 }));
+            try testing.expectEqual(null, map.find(Point{ .x = -10.0, .y = -10.0 }));
+
+            // contains()
+            try testing.expectEqual(true, map.contains(Point{ .x = 1.0, .y = 1.0 }));
+            try testing.expectEqual(false, map.contains(Point{ .x = 2.0, .y = 2.0 }));
+            try testing.expectEqual(true, map.contains(Point{ .x = 3.0, .y = 10.0 }));
+            try testing.expectEqual(false, map.contains(Point{ .x = -10.0, .y = -10.0 }));
         }
-        try testing.expectEqual(27, map.find(-27));
-        try testing.expectEqual(null, map.find(-101));
-        try testing.expectEqual(59, map.find(-59));
-        try testing.expectEqual(null, map.find(20));
-
-        // contains()
-        try testing.expectEqual(true, map.contains(-14));
-        try testing.expectEqual(false, map.contains(45));
-        try testing.expectEqual(true, map.contains(-8));
-        try testing.expectEqual(false, map.contains(-120));
-    }
-
-    const types_3 = [_]type{ f32, f64 };
-    inline for (types_3) |K| {
-        // init()
-        var map = HashMap(K, i32).init(allocator);
-
-        // deinit()
-        defer map.deinit();
-
-        // put()
-        var i: K = -100.0;
-        while (i != 100.0) : (i += 1.0) {
-            const tmp_i: K = @floatCast(i);
-            const v: i32 = @intFromFloat(i);
-            try map.put(tmp_i, v);
-        }
-        // std.debug.print("{}\n", .{map});
-        try testing.expectEqual(false, map.empty());
-
-        // put() with existing key
-        i = -100.0;
-        while (i != 100.0) : (i += 1.0) {
-            const tmp_i: K = @floatCast(i);
-            const v: i32 = @intFromFloat(i);
-            try map.put(tmp_i, v);
-        }
-        // std.debug.print("{}\n", .{map});
-        try testing.expectEqual(false, map.empty());
-
-        // erase()
-        var k: K = -100.0;
-        while (k != 100.0) : (k += 1.0) {
-            const tmp_k: K = @floatCast(k);
-            try map.erase(tmp_k);
-        }
-        // std.debug.print("{}\n", .{map}); // should be empty when printed
-        try testing.expectEqual(true, map.empty());
-
-        // find()
-        i = -100.0;
-        while (i != 100.0) : (i += 1.0) {
-            const tmp_i: K = @floatCast(i);
-            const v: i32 = @intFromFloat(i);
-            try map.put(tmp_i, v);
-        }
-        try testing.expectEqual(-27, map.find(-27.0));
-        try testing.expectEqual(null, map.find(-101.0));
-        try testing.expectEqual(-59, map.find(-59.0));
-        try testing.expectEqual(null, map.find(120.0));
-
-        // contains()
-        try testing.expectEqual(true, map.contains(-14.0));
-        try testing.expectEqual(true, map.contains(35.0));
-        try testing.expectEqual(true, map.contains(-8.0));
-        try testing.expectEqual(false, map.contains(-120.0));
-        try testing.expectEqual(false, map.contains(150.0));
-    }
-
-    // String literal as key
-    {
-        // init()
-        var map = HashMap([]const u8, i32).init(allocator);
-
-        // deinit()
-        defer map.deinit();
-
-        // put()
-        try map.put("Hello", 1);
-        try map.put("World", 2);
-        try map.put("Zig", 3);
-        // std.debug.print("{any}\n", .{map});
-        try testing.expectEqual(false, map.empty());
-
-        // put() with existing key
-        try map.put("Hello", 1);
-        try map.put("World", 2);
-        try map.put("Zig", 3);
-        // std.debug.print("{any}\n", .{map});
-        try testing.expectEqual(false, map.empty());
-
-        // erase()
-        try map.erase("Hello");
-        try map.erase("World");
-        try map.erase("Zig");
-        // std.debug.print("{any}\n", .{map}); // should be empty when printed
-        try testing.expectEqual(true, map.empty());
-
-        // find()
-        try map.put("Hello", 1);
-        try map.put("World", 2);
-        try map.put("Zig", 3);
-        try testing.expectEqual(1, map.find("Hello"));
-        try testing.expectEqual(null, map.find("Ziggy"));
-        try testing.expectEqual(2, map.find("World"));
-
-        // contains()
-        try testing.expectEqual(true, map.contains("Hello"));
-        try testing.expectEqual(false, map.contains("Ziggy"));
-        try testing.expectEqual(true, map.contains("World"));
-        try testing.expectEqual(false, map.contains("Hi"));
-    }
-
-    // Struct as key
-    {
-        const Point = struct { x: f64, y: f64 };
-        // init()
-        var map = HashMap(Point, i32).init(allocator);
-
-        // deinit()
-        defer map.deinit();
-
-        // put()
-        try map.put(Point{ .x = 1.0, .y = 1.0 }, 1);
-        try map.put(Point{ .x = 3.0, .y = 10.0 }, 2);
-        try map.put(Point{ .x = -5.0, .y = -1.0 }, 3);
-        // std.debug.print("{any}\n", .{map});
-        try testing.expectEqual(false, map.empty());
-
-        // put() with existing key
-        try map.put(Point{ .x = 1.0, .y = 1.0 }, 1);
-        try map.put(Point{ .x = 3.0, .y = 10.0 }, 2);
-        try map.put(Point{ .x = -5.0, .y = -1.0 }, 3);
-        // std.debug.print("{any}\n", .{map});
-        try testing.expectEqual(false, map.empty());
-
-        // erase()
-        try map.erase(Point{ .x = 1.0, .y = 1.0 });
-        try map.erase(Point{ .x = 3.0, .y = 10.0 });
-        try map.erase(Point{ .x = -5.0, .y = -1.0 });
-        // std.debug.print("{any}\n", .{map}); // should be empty when printed
-        try testing.expectEqual(true, map.empty());
-
-        // find()
-        try map.put(Point{ .x = 1.0, .y = 1.0 }, 1);
-        try map.put(Point{ .x = 3.0, .y = 10.0 }, 2);
-        try map.put(Point{ .x = -5.0, .y = -1.0 }, 3);
-        try testing.expectEqual(1, map.find(Point{ .x = 1.0, .y = 1.0 }));
-        try testing.expectEqual(null, map.find(Point{ .x = 2.0, .y = 2.0 }));
-        try testing.expectEqual(2, map.find(Point{ .x = 3.0, .y = 10.0 }));
-        try testing.expectEqual(null, map.find(Point{ .x = -10.0, .y = -10.0 }));
-
-        // contains()
-        try testing.expectEqual(true, map.contains(Point{ .x = 1.0, .y = 1.0 }));
-        try testing.expectEqual(false, map.contains(Point{ .x = 2.0, .y = 2.0 }));
-        try testing.expectEqual(true, map.contains(Point{ .x = 3.0, .y = 10.0 }));
-        try testing.expectEqual(false, map.contains(Point{ .x = -10.0, .y = -10.0 }));
     }
 }
