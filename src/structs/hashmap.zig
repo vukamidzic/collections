@@ -1,12 +1,44 @@
 const std = @import("std");
 
-pub fn HashMap(init_cap: u32, comptime K: type, comptime V: type) type {
+fn get_cmp_fn(comptime K: type) ?fn (K, K) bool {
+    const cmp_fn: ?fn (K, K) bool = comptime blk: {
+        const info = @typeInfo(K);
+        switch (info) {
+            .int, .comptime_int, .float, .comptime_float => break :blk struct {
+                fn cmp(a: K, b: K) bool {
+                    return a == b;
+                }
+            }.cmp,
+            .array => break :blk struct {
+                fn cmp(a: K, b: K) bool {
+                    return std.mem.eql(info.array.child, a, b);
+                }
+            }.cmp,
+            .pointer => break :blk struct {
+                fn cmp(a: K, b: K) bool {
+                    return std.mem.eql(info.pointer.child, a, b);
+                }
+            }.cmp,
+            .@"struct" => break :blk struct {
+                fn cmp(a: K, b: K) bool {
+                    return std.meta.eql(a, b);
+                }
+            }.cmp,
+            else => break :blk null,
+        }
+    };
+
+    return cmp_fn;
+}
+
+pub fn HashMap(init_cap: u32, comptime K: type, comptime V: type, custom_hash: ?fn (K) u64) type {
     return struct {
         const Self = @This();
         const Pair = struct { key: K, value: V };
         // TODO try using arrays instead of lists
         const Bucket = std.ArrayList(Pair);
 
+        size: usize,
         buckets: [init_cap]Bucket,
         allocator: std.mem.Allocator,
 
@@ -17,6 +49,7 @@ pub fn HashMap(init_cap: u32, comptime K: type, comptime V: type) type {
             }
 
             return Self{
+                .size = 0,
                 .buckets = buckets,
                 .allocator = allocator,
             };
@@ -29,11 +62,7 @@ pub fn HashMap(init_cap: u32, comptime K: type, comptime V: type) type {
         }
 
         pub fn empty(self: *Self) bool {
-            for (self.buckets) |bucket| {
-                if (bucket.items.len != 0) return false;
-            }
-
-            return true;
+            return self.size == 0;
         }
 
         fn hash(buckets_len: u64, key: anytype) !u64 {
@@ -90,40 +119,18 @@ pub fn HashMap(init_cap: u32, comptime K: type, comptime V: type) type {
         }
 
         fn get_bucket(self: *Self, key: K) !*std.ArrayList(Pair) {
-            const h = try hash(self.buckets.len, key);
-            return &self.buckets[h];
+            if (custom_hash != null) {
+                const h = custom_hash.?(key);
+                return &self.buckets[h];
+            } else {
+                const h = try hash(self.buckets.len, key);
+                return &self.buckets[h];
+            }
         }
 
         pub fn put(self: *Self, key: K, value: V) !void {
             var bucket = try self.get_bucket(key);
-
-            // TODO: extract comp_fn assignment into separate function!!!
-            const cmp_fn: ?fn (K, K) bool = comptime blk: {
-                const info = @typeInfo(K);
-                switch (info) {
-                    .int, .comptime_int, .float, .comptime_float => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return a == b;
-                        }
-                    }.cmp,
-                    .array => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return std.mem.eql(info.array.child, a, b);
-                        }
-                    }.cmp,
-                    .pointer => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return std.mem.eql(info.pointer.child, a, b);
-                        }
-                    }.cmp,
-                    .@"struct" => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return std.meta.eql(a, b);
-                        }
-                    }.cmp,
-                    else => break :blk null,
-                }
-            };
+            const cmp_fn = get_cmp_fn(K);
 
             if (cmp_fn != null) {
                 for (bucket.items) |*pair| {
@@ -133,38 +140,13 @@ pub fn HashMap(init_cap: u32, comptime K: type, comptime V: type) type {
                     }
                 }
                 try bucket.append(.{ .key = key, .value = value });
+                self.size += 1;
             } else return error.NotImplemented;
         }
 
         pub fn erase(self: *Self, key: K) !void {
             var bucket = try self.get_bucket(key);
-
-            const cmp_fn: ?fn (K, K) bool = comptime blk: {
-                const info = @typeInfo(K);
-                switch (info) {
-                    .int, .comptime_int, .float, .comptime_float => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return a == b;
-                        }
-                    }.cmp,
-                    .array => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return std.mem.eql(info.array.child, a, b);
-                        }
-                    }.cmp,
-                    .pointer => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return std.mem.eql(info.pointer.child, a, b);
-                        }
-                    }.cmp,
-                    .@"struct" => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return std.meta.eql(a, b);
-                        }
-                    }.cmp,
-                    else => break :blk null,
-                }
-            };
+            const cmp_fn = get_cmp_fn(K);
 
             if (cmp_fn != null) {
                 if (bucket.items.len > 0) {
@@ -176,39 +158,17 @@ pub fn HashMap(init_cap: u32, comptime K: type, comptime V: type) type {
                         idx += 1;
                     }
 
-                    if (idx < bucket.items.len) _ = bucket.swapRemove(idx);
+                    if (idx < bucket.items.len) {
+                        _ = bucket.swapRemove(idx);
+                        self.size -= 1;
+                    }
                 }
             } else return error.NotImplemented;
         }
 
         pub fn find(self: *Self, key: K) !?V {
             const bucket = try self.get_bucket(key);
-            const cmp_fn: ?fn (K, K) bool = comptime blk: {
-                const info = @typeInfo(K);
-                switch (info) {
-                    .int, .comptime_int, .float, .comptime_float => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return a == b;
-                        }
-                    }.cmp,
-                    .array => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return std.mem.eql(info.array.child, a, b);
-                        }
-                    }.cmp,
-                    .pointer => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return std.mem.eql(info.pointer.child, a, b);
-                        }
-                    }.cmp,
-                    .@"struct" => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return std.meta.eql(a, b);
-                        }
-                    }.cmp,
-                    else => break :blk null,
-                }
-            };
+            const cmp_fn = get_cmp_fn(K);
 
             if (cmp_fn != null) {
                 for (bucket.items) |pair| {
@@ -222,32 +182,7 @@ pub fn HashMap(init_cap: u32, comptime K: type, comptime V: type) type {
 
         pub fn contains(self: *Self, key: K) !bool {
             const bucket = try self.get_bucket(key);
-            const cmp_fn: ?fn (K, K) bool = comptime blk: {
-                const info = @typeInfo(K);
-                switch (info) {
-                    .int, .comptime_int, .float, .comptime_float => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return a == b;
-                        }
-                    }.cmp,
-                    .array => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return std.mem.eql(info.array.child, a, b);
-                        }
-                    }.cmp,
-                    .pointer => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return std.mem.eql(info.pointer.child, a, b);
-                        }
-                    }.cmp,
-                    .@"struct" => break :blk struct {
-                        fn cmp(a: K, b: K) bool {
-                            return std.meta.eql(a, b);
-                        }
-                    }.cmp,
-                    else => break :blk null,
-                }
-            };
+            const cmp_fn = get_cmp_fn(K);
 
             if (cmp_fn != null) {
                 for (bucket.items) |pair| {

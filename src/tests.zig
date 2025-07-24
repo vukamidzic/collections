@@ -149,7 +149,7 @@ test "HashMap" {
         const types_1 = [_]type{ u8, u16, u32 };
         inline for (types_1) |K| {
             // init()
-            var map = HashMap(init_cap, K, u32).init(allocator);
+            var map = HashMap(init_cap, K, u32, null).init(allocator);
 
             // deinit()
             defer map.deinit();
@@ -221,7 +221,7 @@ test "HashMap" {
         const types_2 = [_]type{ i8, i16, i32 };
         inline for (types_2) |K| {
             // init()
-            var map = HashMap(init_cap, K, u32).init(allocator);
+            var map = HashMap(init_cap, K, u32, null).init(allocator);
 
             // deinit()
             defer map.deinit();
@@ -273,7 +273,7 @@ test "HashMap" {
         const types_3 = [_]type{ f32, f64 };
         inline for (types_3) |K| {
             // init()
-            var map = HashMap(init_cap, K, i32).init(allocator);
+            var map = HashMap(init_cap, K, i32, null).init(allocator);
 
             // deinit()
             defer map.deinit();
@@ -330,7 +330,7 @@ test "HashMap" {
         // String literal as key
         {
             // init()
-            var map = HashMap(init_cap, []const u8, i32).init(allocator);
+            var map = HashMap(init_cap, []const u8, i32, null).init(allocator);
 
             // deinit()
             defer map.deinit();
@@ -375,7 +375,7 @@ test "HashMap" {
         {
             const Point = struct { x: f64, y: f64 };
             // init()
-            var map = HashMap(init_cap, Point, i32).init(allocator);
+            var map = HashMap(init_cap, Point, i32, null).init(allocator);
 
             // deinit()
             defer map.deinit();
@@ -415,6 +415,56 @@ test "HashMap" {
             try testing.expectEqual(false, map.contains(Point{ .x = 2.0, .y = 2.0 }));
             try testing.expectEqual(true, map.contains(Point{ .x = 3.0, .y = 10.0 }));
             try testing.expectEqual(false, map.contains(Point{ .x = -10.0, .y = -10.0 }));
+        }
+
+        // Custom hash function
+        {
+            const CustomKey = struct { id: u32, name: []const u8 };
+
+            const custom_hash = struct {
+                fn hash(key: CustomKey) u64 {
+                    return (@as(u64, key.id) + std.hash.Fnv1a_64.hash(key.name)) % @as(u64, init_cap);
+                }
+            }.hash;
+
+            // init()
+            var map = HashMap(init_cap, CustomKey, i32, custom_hash).init(allocator);
+
+            // deinit()
+            defer map.deinit();
+
+            // put()
+            try map.put(CustomKey{ .id = 1, .name = "Alice" }, 100);
+            try map.put(CustomKey{ .id = 2, .name = "Bob" }, 200);
+            try map.put(CustomKey{ .id = 3, .name = "Charlie" }, 300);
+            // std.debug.print("{any}\n", .{map});
+            try testing.expectEqual(false, map.empty());
+
+            // put() with existing key
+            try map.put(CustomKey{ .id = 1, .name = "Alice" }, 150);
+            try map.put(CustomKey{ .id = 2, .name = "Bob" }, 250);
+            try map.put(CustomKey{ .id = 3, .name = "Charlie" }, 350);
+            // std.debug.print("{any}\n", .{map});
+            try testing.expectEqual(false, map.empty());
+
+            // erase()
+            try map.erase(CustomKey{ .id = 1, .name = "Alice" });
+            try map.erase(CustomKey{ .id = 2, .name = "Bob" });
+            try map.erase(CustomKey{ .id = 3, .name = "Charlie" });
+            // std.debug.print("{any}\n", .{map}); // should be empty when printed
+            try testing.expectEqual(true, map.empty());
+
+            // find()
+            try map.put(CustomKey{ .id = 1, .name = "Alice" }, 100);
+            try map.put(CustomKey{ .id = 2, .name = "Bob" }, 200);
+            try map.put(CustomKey{ .id = 3, .name = "Charlie" }, 300);
+            try testing.expectEqual(100, map.find(CustomKey{ .id = 1, .name = "Alice" }));
+
+            // contains()
+            try testing.expectEqual(true, map.contains(CustomKey{ .id = 1, .name = "Alice" }));
+            try testing.expectEqual(false, map.contains(CustomKey{ .id = 4, .name = "Dave" }));
+            try testing.expectEqual(true, map.contains(CustomKey{ .id = 2, .name = "Bob" }));
+            try testing.expectEqual(false, map.contains(CustomKey{ .id = 5, .name = "Eve" }));
         }
     }
 }
